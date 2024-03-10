@@ -1,0 +1,9 @@
+# ignore directorys
+
+# not ignore directorys
+
+# ignore files
+/test/*
+
+# not ignore files
+!/test/*.go
