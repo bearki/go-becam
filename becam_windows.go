@@ -5,6 +5,7 @@ import (
 	"github.com/bearki/becam/dshow"
 )
 
+// New 创建相机管理器
 func New() camera.Manager {
-	return dshow.NewControl()
+	return dshow.New()
 }
