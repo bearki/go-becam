@@ -21,7 +21,7 @@ func TestCamera(t *testing.T) {
 		fmt.Println(v.ID)
 	}
 
-	err = cameraManage.Open(list[0].ID, camera.DefaultDeviceConfig)
+	err = cameraManage.Open(list[0].ID, camera.AutoDeviceConfig)
 	if err != nil {
 		t.Fatal(err)
 	}

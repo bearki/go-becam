@@ -26,21 +26,29 @@ func (s DeviceConfigList) Get(val DeviceConfig) (*DeviceConfig, error) {
 	return nil, ErrNotFoundMatchDeviceConfigInfo
 }
 
-// GetMostSimilar 查找与目标支持信息最相似的支持信息
+// GetMostSimilar 查找与目标配置信息最相似的配置信息
 func (s DeviceConfigList) GetMostSimilar(val DeviceConfig) (*DeviceConfig, error) {
+	// 从列表中过滤掉自动分辨率
+	vailds := make(DeviceConfigList, 0, len(s))
+	for _, v := range s {
+		if !v.Eq(AutoDeviceConfig.Clone()) {
+			vailds = append(vailds, v)
+		}
+	}
+
 	// 只有一个分辨率时直接返回
-	if len(s) == 1 {
-		return s[0].Clone(), nil
+	if len(vailds) == 1 {
+		return vailds[0].Clone(), nil
 	}
 
 	// 精准查询
-	res, err := s.Get(val)
+	res, err := vailds.Get(val)
 	if err == nil {
 		return res, nil
 	}
 
 	// 拷贝一份用于排序
-	tmpS := s.Clone()
+	tmpS := vailds.Clone()
 	// 大于目标的支持信息
 	var gtList DeviceConfigList
 	// 分辨率一致帧率不一致

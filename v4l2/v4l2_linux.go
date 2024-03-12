@@ -4,6 +4,7 @@ package v4l2
 import "C"
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"image"
@@ -35,17 +36,15 @@ type Control struct {
 	deviceInfo         camera.Device           // 当前使用的相机信息
 	deviceSupportInfo  camera.DeviceConfig     // 当前使用的相机支持信息
 	flushStreamWG      sync.WaitGroup          // 刷流线程等待组
-	closeSignalChan    chan struct{}           // 相机关闭请求信号（必须为无缓冲区的管道）
-	latestImgWriteChan chan struct{}           // 最新图像写信号（必须为无缓冲区的管道）
-	latestImgReadChan  chan *AsyncThreadResult // 最新图像读信号（必须为无缓冲区的管道）
+	streamCacheChannel chan *AsyncThreadResult // 相机流缓存管道（必须为无缓冲区的管道）
+	closeSignal        context.Context         // 相机关闭请求信号
+	closeSignalFunc    context.CancelFunc      // 相机关闭请求方法
 }
 
 // New 创建一个相机控制器
 func New() camera.Manager {
 	return &Control{
-		closeSignalChan:    make(chan struct{}),
-		latestImgWriteChan: make(chan struct{}),
-		latestImgReadChan:  make(chan *AsyncThreadResult),
+		streamCacheChannel: make(chan *AsyncThreadResult),
 	}
 }
 
@@ -133,6 +132,9 @@ func getDeviceInfo(path string) (*camera.Device, error) {
 		// 按宽度从大到小排序
 		return deviceConfigList[i].Width > deviceConfigList[j].Width
 	})
+
+	// 追加分辨率信息到设备
+	device.ConfigList = append(device.ConfigList, deviceConfigList...)
 
 	// OK
 	return device, nil
@@ -223,50 +225,29 @@ func (p *Control) GetDeviceWithID(id string) (*camera.Device, error) {
 	return p.deviceCacheList.Get(id)
 }
 
-// 发送最新图像写信号
-func (p *Control) sendLatestImgWriteChan(timeout ...time.Duration) error {
-	duration := time.Millisecond * 50
-	if len(timeout) > 0 && timeout[0] > 0 {
-		duration = timeout[0]
+// 拷贝流
+func (p *Control) copyStream(handle *webcam.Webcam) ([]byte, error) {
+	// 读取一帧
+	buf, index, err := handle.GetFrame()
+	// 取流是否异常
+	if err != nil {
+		return nil, err
 	}
-	select {
-	case p.latestImgWriteChan <- struct{}{}: // 信号发送成功
-		return nil
-	case <-time.After(duration): // 信号发送超时
-		fmt.Fprintln(os.Stderr, camera.ErrWriteChannelSendTimeout.Error())
-		return camera.ErrWriteChannelSendTimeout
-	}
-}
+	// 延迟释放
+	defer handle.ReleaseFrame(index)
 
-// 发送最新图像读信号
-func (p *Control) sendLatestImgReadChan(data *AsyncThreadResult) error {
-	select {
-	case p.latestImgReadChan <- data: // 信号发送成功
-		return nil
-	case <-time.After(time.Millisecond * 50): // 信号发送超时
-		fmt.Fprintln(os.Stderr, camera.ErrReadChannelSendTimeout.Error())
-		return camera.ErrReadChannelSendTimeout
+	// 拷贝流
+	copyBuf := make([]byte, len(buf))
+	wn := copy(copyBuf, buf)
+	if wn != len(buf) {
+		return nil, camera.ErrCopyStreamFail
 	}
-}
 
-// 发送相机关闭请求信号
-func (p *Control) sendCloseSignalChan(timeout ...time.Duration) error {
-	duration := time.Millisecond * 50
-	if len(timeout) > 0 && timeout[0] > 0 {
-		duration = timeout[0]
-	}
-	select {
-	case p.closeSignalChan <- struct{}{}: // 信号发送成功
-		return nil
-	case <-time.After(duration): // 信号发送超时
-		fmt.Fprintln(os.Stderr, camera.ErrCloseStartChannelSendTimeout.Error())
-		return camera.ErrCloseStartChannelSendTimeout
-	}
+	// OK
+	return copyBuf, nil
 }
 
 // 刷新相机流
-//
-//	@var	handle	临时相机句柄
 func (p *Control) flushStream(handle *webcam.Webcam) {
 	// 捕获异常
 	defer func() {
@@ -281,63 +262,46 @@ func (p *Control) flushStream(handle *webcam.Webcam) {
 	// 死循环刷流
 	for {
 		// 等待Linux取流信号
-		errs := handle.WaitForFrame(5)
+		err := handle.WaitForFrame(5)
 		// 等待信号
 		select {
 		// 请求关闭相机
-		case <-p.closeSignalChan:
+		case <-p.closeSignal.Done():
 			// 结束循环
 			return
 
-		// 取流信号
-		case <-p.latestImgWriteChan:
-			func() {
-				// 取流是否异常
-				if errs != nil {
-					// 发送取流结果信号
-					_ = p.sendLatestImgReadChan(&AsyncThreadResult{
-						Err: errs,
-					})
-					return
-				}
-
-				// 读取一帧
-				buf, index, errs := handle.GetFrame()
-				// 取流是否异常
-				if errs != nil {
-					_ = p.sendLatestImgReadChan(&AsyncThreadResult{
-						Err: errs,
-					})
-					return
-				}
-				// 延迟释放
-				defer handle.ReleaseFrame(index)
-
-				// 拷贝流
-				copyBuf := make([]byte, len(buf))
-				wn := copy(copyBuf, buf)
-				if wn != len(buf) {
-					_ = p.sendLatestImgReadChan(&AsyncThreadResult{
-						Err: camera.ErrCopyStreamFail,
-					})
-					return
-				}
-				// 拷贝OK
-				_ = p.sendLatestImgReadChan(&AsyncThreadResult{
-					Err:   nil,
-					Bytes: copyBuf,
-				})
-			}()
-
-		// 默认
+		// 默认处理方式
 		default:
-			if errs != nil {
+			// 预声明
+			var reply *AsyncThreadResult
+			// 取流是否异常
+			if err != nil {
 				// 打印异常
-				fmt.Fprintln(os.Stderr, "WaitForFrame: "+errs.Error())
-				continue
+				fmt.Fprintln(os.Stderr, "WaitForFrame: "+err.Error())
+				// 构建响应
+				reply = &AsyncThreadResult{
+					Err:   err,
+					Bytes: nil,
+				}
+			} else {
+				// 拷贝流
+				data, err := p.copyStream(handle)
+				// 构建响应
+				reply = &AsyncThreadResult{
+					Err:   err,
+					Bytes: data,
+				}
 			}
-			// 读一帧，扔掉
-			_, _ = handle.ReadFrame()
+
+			// 管道处理
+			select {
+			// 尝试发送
+			case p.streamCacheChannel <- reply:
+				// 发送成功啥也不做
+			// 发送失败直接丢弃
+			default:
+				// 默认丢弃
+			}
 		}
 	}
 }
@@ -348,6 +312,9 @@ func (p *Control) flushStream(handle *webcam.Webcam) {
 //	@param	info	分辨率信息
 //	@return	异常信息
 func (p *Control) Open(id string, info camera.DeviceConfig) error {
+	// 关闭已打开的相机
+	p.Close()
+
 	// 操作加锁
 	p.rwmutex.Lock()
 	defer p.rwmutex.Unlock()
@@ -381,11 +348,11 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		// 赋值选择的分辨率
 		_, w, h, err := tmpHandle.SetImageFormat(C.V4L2_PIX_FMT_MJPEG, sInfo.Width, sInfo.Height)
 		if err != nil {
-			return errors.Join(camera.ErrSetSupportInfoFail, err)
+			return errors.Join(camera.ErrSetConfigInfoFail, err)
 		}
 		err = tmpHandle.SetFramerate(float32(sInfo.FPS))
 		if err != nil {
-			return errors.Join(camera.ErrSetSupportInfoFail, err)
+			return errors.Join(camera.ErrSetConfigInfoFail, err)
 		}
 		fps, err := tmpHandle.GetFramerate()
 		if err != nil {
@@ -398,16 +365,19 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 			FPS:    uint32(fps),
 		}
 	} else if len(cameraInfo.ConfigList) > 0 {
-		// 选中第一个分辨率
-		sInfo := cameraInfo.ConfigList[0]
+		// 选中与默认分辨率最相似的分辨率
+		sInfo, err := cameraInfo.ConfigList.GetMostSimilar(camera.DefaultDeviceConfig)
+		if err != nil {
+			return err
+		}
 		// 赋值选择的分辨率
 		_, w, h, err := tmpHandle.SetImageFormat(C.V4L2_PIX_FMT_MJPEG, sInfo.Width, sInfo.Height)
 		if err != nil {
-			return errors.Join(camera.ErrSetSupportInfoFail, err)
+			return errors.Join(camera.ErrSetConfigInfoFail, err)
 		}
 		err = tmpHandle.SetFramerate(float32(sInfo.FPS))
 		if err != nil {
-			return errors.Join(camera.ErrSetSupportInfoFail, err)
+			return errors.Join(camera.ErrSetConfigInfoFail, err)
 		}
 		fps, err := tmpHandle.GetFramerate()
 		if err != nil {
@@ -427,6 +397,8 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		return errors.Join(camera.ErrStartStreamingFail, err)
 	}
 
+	// 赋值新的相机关闭信号管道
+	p.closeSignal, p.closeSignalFunc = context.WithCancel(context.Background())
 	// 赋值句柄
 	p.deviceHandle = tmpHandle
 	// 赋值当前使用的相机信息
@@ -438,15 +410,10 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 
 	// 最大连续取流50次，有一次成功就可以
 	for i := 0; i < 50; i++ {
-		// 发送一次取流信号
-		err = p.sendLatestImgWriteChan(time.Second * 5)
-		if err != nil {
-			continue
-		}
 		// 等待相机就绪
 		select {
 		// 相机取流成功
-		case imgRes := <-p.latestImgReadChan:
+		case imgRes := <-p.streamCacheChannel:
 			if imgRes.Err != nil {
 				err = imgRes.Err
 				continue
@@ -510,19 +477,9 @@ func (p *Control) GetStream() ([]byte, error) {
 
 	// 执行取流，并做好取流失败重试准备
 	for i := 1; i <= GetStreamRetryCount; i++ {
-		// 发送写信号
-		err := p.sendLatestImgWriteChan()
-		if err != nil {
-			// 是否需要尝试再次取流
-			if i < GetStreamRetryCount {
-				continue
-			}
-			return nil, err
-		}
-
 		// 等待取流完成或者取流超时
 		select {
-		case res := <-p.latestImgReadChan: // 取流完成信号
+		case res := <-p.streamCacheChannel: // 取流完成信号
 			// 是否异常
 			if res.Err != nil {
 				// 是否需要尝试再次取流
@@ -555,12 +512,12 @@ func (p *Control) Close() {
 	defer p.rwmutex.Unlock()
 
 	// 是否存在已打开的相机
-	if p.deviceHandle == nil {
+	if p.deviceHandle == nil || p.closeSignal == nil || p.closeSignalFunc == nil {
 		return
 	}
 
 	// 通知需要关闭相机
-	_ = p.sendCloseSignalChan(time.Second * 5)
+	p.closeSignalFunc()
 	// 等待所有刷流线程关闭
 	p.flushStreamWG.Wait()
 

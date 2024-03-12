@@ -263,10 +263,6 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		if err != nil {
 			return err
 		}
-		// 是否为自动分辨率
-		if sInfo.Eq(&camera.AutoDeviceConfig) {
-			return camera.ErrNotFoundMatchDeviceConfigInfo
-		}
 		// 赋值选择的分辨率
 		info.Width, tmpHandle.width = sInfo.Width, C.int(sInfo.Width)
 		info.Height, tmpHandle.height = sInfo.Height, C.int(sInfo.Height)
