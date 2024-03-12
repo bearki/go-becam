@@ -22,6 +22,11 @@ import (
 	"github.com/bearki/becam/camera"
 )
 
+const (
+	// MJPEG图像格式（小端序）
+	V4L2_PIX_FMT_MJPEG = (uint32('M') | (uint32('J') << 8) | (uint32('P') << 16) | (uint32('G') << 24))
+)
+
 // AsyncThreadResult 异步线程响应结果
 type AsyncThreadResult struct {
 	Err   error  // 异常信息
@@ -102,7 +107,7 @@ func getDeviceConfig(symbolicLink string) (camera.DeviceConfigList, error) {
 		// 获取分辨率
 		p := C.getProp(in, C.int(i))
 		// 过滤不支持MJPEG的
-		if uint32(p.fcc) != camera.V4L2_PIX_FMT_RGB332 {
+		if uint32(p.fcc) != V4L2_PIX_FMT_MJPEG {
 			continue
 		}
 		// 过滤width小于600px的分辨率
