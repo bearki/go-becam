@@ -1,9 +1,9 @@
 package dshow
 
-// #cgo CFLAGS: -I${SRCDIR}
 // #cgo LDFLAGS: -lkernel32 -lstrmiids -lole32 -loleaut32 -lquartz -lsetupapi
 // #include <dshow.h>
 // #include <stdint.h>
+// #cgo CFLAGS: -I${SRCDIR}
 // #include "dshow_windows.hpp"
 import "C"
 import (
@@ -45,7 +45,7 @@ func imageCallback(imgBuf *C.char, imgBufSize C.size_t) {
 	if imgBuf == nil || imgBufSize <= 0 {
 		// 发送取流结果信号
 		select {
-		case streamCacheChannel <- &AsyncThreadResult{Err: camera.ErrGetStreamFail}:
+		case streamCacheChannel <- &AsyncThreadResult{Err: camera.ErrGetFrameFailed}:
 		case <-time.After(time.Millisecond * 5):
 		}
 		return
@@ -55,7 +55,7 @@ func imageCallback(imgBuf *C.char, imgBufSize C.size_t) {
 	if len(copyBuf) != int(imgBufSize) {
 		// 发送取流结果信号
 		select {
-		case streamCacheChannel <- &AsyncThreadResult{Err: camera.ErrCopyStreamFail}:
+		case streamCacheChannel <- &AsyncThreadResult{Err: camera.ErrCopyFrameFailed}:
 		case <-time.After(time.Millisecond * 5):
 		}
 		return
@@ -98,8 +98,9 @@ func getDeviceConfig(symbolicLink string) (camera.DeviceConfigList, error) {
 
 	var errStr *C.char
 	if C.getResolution(in, &errStr) != 0 {
-		errors.Join(camera.ErrGetCurrConfigInfoFail)
-		return nil, errors.New("get device config error, " + C.GoString(errStr))
+		err := errors.New(C.GoString(errStr))
+		err = errors.Join(camera.ErrGetDeviceConfigFailed, err)
+		return nil, err
 	}
 	defer C.freeResolution(in)
 
@@ -157,7 +158,7 @@ func (p *Control) GetList() (camera.DeviceList, error) {
 	if C.listCamera(&list, &errStr) != 0 {
 		err := errors.New("enum camera device list error, " + C.GoString(errStr))
 		fmt.Fprintln(os.Stderr, err.Error())
-		return nil, errors.Join(camera.ErrQueryListFail, err)
+		return nil, errors.Join(camera.ErrGetDeviceConfigFailed, err)
 	}
 	defer C.freeCameraList(&list, &errStr)
 
@@ -274,7 +275,7 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 	res := C.openCamera(tmpHandle, &errStr)
 	if res != 0 {
 		C.free(unsafe.Pointer(tmpHandle.path))
-		return errors.Join(camera.ErrOpenFail, errors.New(C.GoString(errStr)))
+		return errors.Join(camera.ErrDeviceOpenFailed, errors.New(C.GoString(errStr)))
 	}
 
 	// 缓存句柄
@@ -307,7 +308,7 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 
 		// 相机取流超时
 		case <-time.After(time.Second * 3):
-			err = camera.ErrReadChannelRecvTimeout
+			err = camera.ErrGetFrameTimout
 			continue
 		}
 	}
@@ -328,7 +329,7 @@ func (p *Control) GetCurrDeviceConfigInfo() (*camera.Device, *camera.DeviceConfi
 
 	// 检查相机是否已打开
 	if p.deviceHandle == nil {
-		return nil, nil, camera.ErrNotOpen
+		return nil, nil, camera.ErrDeviceNotOpen
 	}
 
 	// 返回结果
@@ -346,7 +347,7 @@ func (p *Control) GetFrame() ([]byte, error) {
 
 	// 检查相机是否已打开
 	if p.deviceHandle == nil {
-		return nil, camera.ErrNotOpen
+		return nil, camera.ErrDeviceNotOpen
 	}
 
 	// 执行取流，并做好取流失败重试准备
@@ -371,12 +372,12 @@ func (p *Control) GetFrame() ([]byte, error) {
 				continue
 			}
 			// Timeout
-			return nil, camera.ErrReadChannelRecvTimeout
+			return nil, camera.ErrGetFrameTimout
 		}
 	}
 
 	// Timeout
-	return nil, camera.ErrReadChannelRecvTimeout
+	return nil, camera.ErrGetFrameTimout
 }
 
 // Close 关闭已打开的相机
