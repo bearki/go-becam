@@ -22,13 +22,6 @@ import (
 	"github.com/bearki/becam/camera"
 )
 
-const (
-	// MJPEG图像格式
-	PixelFourccMjpg = 0x47504A4D
-	// 取流失败重试次数
-	GetStreamRetryCount = 50
-)
-
 // AsyncThreadResult 异步线程响应结果
 type AsyncThreadResult struct {
 	Err   error  // 异常信息
@@ -109,7 +102,7 @@ func getDeviceConfig(symbolicLink string) (camera.DeviceConfigList, error) {
 		// 获取分辨率
 		p := C.getProp(in, C.int(i))
 		// 过滤不支持MJPEG的
-		if p.fcc != PixelFourccMjpg {
+		if uint32(p.fcc) != camera.V4L2_PIX_FMT_RGB332 {
 			continue
 		}
 		// 过滤width小于600px的分辨率

@@ -1,7 +1,11 @@
 package camera
 
-// 获取帧失败重试次数
-const GetFrameRetryCount = 50
+const (
+	// MJPEG图像格式（小端序）
+	V4L2_PIX_FMT_RGB332 = (uint32('M') | (uint32('J') << 8) | (uint32('P') << 16) | (uint32('G') << 24))
+	// 获取帧失败重试次数
+	GetFrameRetryCount = 50
+)
 
 // Manager 相机管理器
 type Manager interface {
