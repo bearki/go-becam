@@ -18,11 +18,16 @@ func TestCamera(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, v := range list {
-		fmt.Println(v.ID)
+	for i, v := range list {
+		fmt.Printf("%d. %s (%s)\n", i, v.ID, v.Name)
 	}
 
-	err = cameraManage.Open(list[0].ID, camera.AutoDeviceConfig)
+	// 等待选择相机
+	var index int
+	fmt.Scanf("%d\n", &index)
+	fmt.Println(index)
+
+	err = cameraManage.Open(list[index].ID, camera.AutoDeviceConfig)
 	if err != nil {
 		t.Fatal(err)
 	}

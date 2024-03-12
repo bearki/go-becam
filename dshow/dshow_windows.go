@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"image"
 	"image/jpeg"
 	"os"
 	"sort"
@@ -136,6 +135,54 @@ func getDeviceConfig(symbolicLink string) (camera.DeviceConfigList, error) {
 
 	// OK
 	return deviceConfigList, nil
+}
+
+// --------------------------------------------- 实现内部接口 --------------------------------------------- //
+
+// 尝试获取帧
+func (p *Control) tryGetFrame(parseW, parseH *uint32) ([]byte, error) {
+	// 执行取流，并做好取流失败重试准备
+	for i := 1; i <= camera.GetFrameRetryCount; i++ {
+		// 等待取流完成或者取流超时
+		select {
+		// 取流完成信号
+		case res := <-streamCacheChannel:
+			// 是否异常
+			if res.Err != nil {
+				// 是否需要尝试再次取流
+				if i < camera.GetFrameRetryCount {
+					continue
+				}
+				// 返回异常
+				return nil, res.Err
+			}
+			// 是否需要解码图像
+			if parseW != nil && parseH != nil {
+				// 解码图像
+				imgConf, err := jpeg.DecodeConfig(bytes.NewReader(res.Bytes))
+				if err != nil {
+					if i < camera.GetFrameRetryCount {
+						continue
+					}
+					// 返回异常
+					return nil, err
+				}
+				// 赋值宽高
+				*parseW = uint32(imgConf.Width)
+				*parseH = uint32(imgConf.Height)
+			}
+			// 获取帧成功
+			return res.Bytes, nil
+
+		// 取流超时信号
+		case <-time.After(time.Millisecond * 50):
+			// 继续剩余次数
+			continue
+		}
+	}
+
+	// 超时了
+	return nil, camera.ErrGetFrameTimout
 }
 
 // --------------------------------------------- 实现Manager接口 --------------------------------------------- //
@@ -283,38 +330,17 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 	// 赋值当前使用的相机信息
 	p.deviceInfo = *cameraInfo
 
-	// 最大连续取流50次，有一次成功就可以
-	for i := 0; i < 50; i++ {
-		// 等待相机就绪
-		select {
-		// 相机取流成功
-		case imgRes := <-streamCacheChannel:
-			if imgRes.Err != nil {
-				err = imgRes.Err
-				continue
-			}
-			// 转码JPEG图像
-			var imgConf image.Config
-			imgConf, err = jpeg.DecodeConfig(bytes.NewReader(imgRes.Bytes))
-			if err != nil {
-				continue
-			}
-			// 赋值图像宽高
-			p.deviceSupportInfo.Width = uint32(imgConf.Width)
-			p.deviceSupportInfo.Height = uint32(imgConf.Height)
-			p.deviceSupportInfo.FPS = info.FPS
-			// OK
-			return nil
-
-		// 相机取流超时
-		case <-time.After(time.Second * 3):
-			err = camera.ErrGetFrameTimout
-			continue
-		}
+	// 尝试获取帧，计算其分辨率
+	_, err = p.tryGetFrame(&p.deviceSupportInfo.Width, &p.deviceSupportInfo.Height)
+	if err != nil {
+		return err
 	}
 
-	// 返回异常状态
-	return err
+	// 赋值帧率
+	p.deviceSupportInfo.FPS = info.FPS
+
+	// OK
+	return nil
 }
 
 // GetDeviceConfigInfo 获取当前设备配置信息
@@ -336,11 +362,13 @@ func (p *Control) GetCurrDeviceConfigInfo() (*camera.Device, *camera.DeviceConfi
 	return p.deviceInfo.Clone(), p.deviceSupportInfo.Clone(), nil
 }
 
-// GetFrame 获取帧
+// GetStream 获取帧
 //
+//	@param	outWidth	需要解析图像宽高时请传入地址，以便于内部赋值
+//	@param	outHeight	需要解析图像宽高时请传入地址，以便于内部赋值
 //	@return	图片流
 //	@return	异常信息
-func (p *Control) GetFrame() ([]byte, error) {
+func (p *Control) GetFrame(outWidth, outHeight *uint32) ([]byte, error) {
 	// 操作加锁
 	p.rwmutex.Lock()
 	defer p.rwmutex.Unlock()
@@ -350,34 +378,8 @@ func (p *Control) GetFrame() ([]byte, error) {
 		return nil, camera.ErrDeviceNotOpen
 	}
 
-	// 执行取流，并做好取流失败重试准备
-	for i := 1; i <= GetStreamRetryCount; i++ {
-		// 等待取流完成或者取流超时
-		select {
-		case res := <-streamCacheChannel: // 取流完成信号
-			// 是否异常
-			if res.Err != nil {
-				// 是否需要尝试再次取流
-				if i < GetStreamRetryCount {
-					continue
-				}
-				// Error
-				return nil, res.Err
-			}
-			// OK
-			return res.Bytes, nil
-		case <-time.After(time.Millisecond * 50): // 取流超时信号
-			// 是否需要尝试再次取流
-			if i < GetStreamRetryCount {
-				continue
-			}
-			// Timeout
-			return nil, camera.ErrGetFrameTimout
-		}
-	}
-
-	// Timeout
-	return nil, camera.ErrGetFrameTimout
+	// 尝试获取帧
+	return p.tryGetFrame(outWidth, outHeight)
 }
 
 // Close 关闭已打开的相机
