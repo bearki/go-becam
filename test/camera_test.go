@@ -18,6 +18,10 @@ func TestCamera(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if len(list) == 0 {
+		t.Fatal("未找到相机")
+	}
+
 	for i, v := range list {
 		fmt.Printf("%d. %s (%s)\n", i, v.ID, v.Name)
 	}
