@@ -1,0 +1,5 @@
+{
+  "go.toolsEnvVars": {
+    "GO_I18N_CODE": "zh-cn"
+  }
+}
