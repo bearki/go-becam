@@ -1,10 +1,10 @@
 package dshow
 
+// #cgo CFLAGS: -I${SRCDIR}
 // #cgo LDFLAGS: -lkernel32 -lstrmiids -lole32 -loleaut32 -lquartz -lsetupapi
 // #include <dshow.h>
 // #include <stdint.h>
-// #cgo CFLAGS: -I${SRCDIR}
-// #include "dshow.hpp"
+// #include "dshow_windows.hpp"
 import "C"
 import (
 	"bytes"
@@ -335,11 +335,11 @@ func (p *Control) GetCurrDeviceConfigInfo() (*camera.Device, *camera.DeviceConfi
 	return p.deviceInfo.Clone(), p.deviceSupportInfo.Clone(), nil
 }
 
-// GetStream 获取图片流
+// GetFrame 获取帧
 //
 //	@return	图片流
 //	@return	异常信息
-func (p *Control) GetStream() ([]byte, error) {
+func (p *Control) GetFrame() ([]byte, error) {
 	// 操作加锁
 	p.rwmutex.Lock()
 	defer p.rwmutex.Unlock()

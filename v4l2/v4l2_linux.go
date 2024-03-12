@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"image"
 	"image/jpeg"
 	"os"
 	"path/filepath"
@@ -18,9 +17,6 @@ import (
 	"github.com/bearki/becam/camera"
 	"github.com/blackjack/webcam"
 )
-
-// 取流失败重试次数
-const GetStreamRetryCount = 50
 
 // AsyncThreadResult 异步线程响应结果
 type AsyncThreadResult struct {
@@ -64,7 +60,7 @@ func getDeviceInfo(path string) (*camera.Device, error) {
 	// 检查设备是否支持mjpeg
 	formats := webcamCam.GetSupportedFormats()
 	if _, ok := formats[C.V4L2_PIX_FMT_MJPEG]; !ok {
-		return nil, errors.New("the device does not support MJPEG format")
+		return nil, camera.ErrDeviceUnsupportMjpegFormat
 	}
 
 	// 获取相机信息
@@ -184,6 +180,137 @@ func discover(list camera.DeviceList, discovered map[string]struct{}, pattern st
 	return list
 }
 
+// --------------------------------------------- 实现内部接口 --------------------------------------------- //
+
+// 拷贝帧
+func (p *Control) copyFrame(handle *webcam.Webcam) ([]byte, error) {
+	// 读取一帧
+	buf, index, err := handle.GetFrame()
+	// 取流是否异常
+	if err != nil {
+		return nil, errors.Join(camera.ErrGetFrameFailed, err)
+	}
+	// 延迟释放
+	defer handle.ReleaseFrame(index)
+
+	// 拷贝流
+	copyBuf := make([]byte, len(buf))
+	wn := copy(copyBuf, buf)
+	if wn != len(buf) {
+		return nil, camera.ErrCopyFrameFailed
+	}
+
+	// OK
+	return copyBuf, nil
+}
+
+// 刷新相机帧
+func (p *Control) flushFrame(handle *webcam.Webcam) {
+	// 捕获异常
+	defer func() {
+		if e := recover(); e != nil {
+			// 打印异常
+			fmt.Fprintln(os.Stderr, "FlushStream Panic: ", e)
+		}
+		// 移除一个组员
+		p.flushStreamWG.Done()
+	}()
+
+	// 死循环刷流
+	for {
+		// 等待帧
+		err := handle.WaitForFrame(5)
+		// 等待信号
+		select {
+		// 请求关闭相机
+		case <-p.closeSignal.Done():
+			// 结束循环
+			return
+
+		// 默认处理方式
+		default:
+			// 预声明
+			var reply *AsyncThreadResult
+			// 取流是否异常
+			if err != nil {
+				// 包装异常
+				err = errors.Join(camera.ErrWaitForFrameFailed, err)
+				// 打印异常
+				fmt.Fprintln(os.Stderr, err.Error())
+				// 构建响应
+				reply = &AsyncThreadResult{
+					Err:   err,
+					Bytes: nil,
+				}
+			} else {
+				// 拷贝流
+				data, err := p.copyFrame(handle)
+				// 构建响应
+				reply = &AsyncThreadResult{
+					Err:   err,
+					Bytes: data,
+				}
+			}
+
+			// 管道处理
+			select {
+			// 尝试发送
+			case p.streamCacheChannel <- reply:
+				// 发送成功啥也不做
+			// 发送失败直接丢弃
+			default:
+				// 默认丢弃
+			}
+		}
+	}
+}
+
+// 尝试获取帧
+func (p *Control) tryGetFrame(parseW, parseH *uint32) ([]byte, error) {
+	// 执行取流，并做好取流失败重试准备
+	for i := 1; i <= camera.GetFrameRetryCount; i++ {
+		// 等待取流完成或者取流超时
+		select {
+		// 取流完成信号
+		case res := <-p.streamCacheChannel:
+			// 是否异常
+			if res.Err != nil {
+				// 是否需要尝试再次取流
+				if errors.Is(res.Err, new(webcam.Timeout)) && i < camera.GetFrameRetryCount {
+					continue
+				}
+				// 返回异常
+				return nil, res.Err
+			}
+			// 是否需要解码图像
+			if parseW != nil && parseH != nil {
+				// 解码图像
+				imgConf, err := jpeg.DecodeConfig(bytes.NewReader(res.Bytes))
+				if err != nil {
+					if i < camera.GetFrameRetryCount {
+						continue
+					}
+					// 返回异常
+					return nil, err
+				}
+				// 赋值宽高
+				*parseW = uint32(imgConf.Width)
+				*parseH = uint32(imgConf.Height)
+			}
+			// 获取帧成功
+			return res.Bytes, nil
+
+		// 取流超时信号
+		case <-time.After(time.Millisecond * 50):
+			// 继续剩余次数
+			continue
+		}
+	}
+
+	// 超时了
+	return nil, camera.ErrGetFrameTimout
+}
+
 // --------------------------------------------- 实现Manager接口 --------------------------------------------- //
 
 // GetList 获取相机列表
@@ -203,10 +330,6 @@ func (p *Control) GetList() (camera.DeviceList, error) {
 	p.deviceCacheList = discover(p.deviceCacheList, discovered, "/dev/v4l/by-id/*")
 	p.deviceCacheList = discover(p.deviceCacheList, discovered, "/dev/v4l/by-path/*")
 	p.deviceCacheList = discover(p.deviceCacheList, discovered, "/dev/video*")
-	// 判断设备数量
-	if len(p.deviceCacheList) == 0 {
-		return nil, nil
-	}
 
 	// 返回相机克隆列表
 	return p.deviceCacheList.Clone(), nil
@@ -223,87 +346,6 @@ func (p *Control) GetDeviceWithID(id string) (*camera.Device, error) {
 	defer p.rwmutex.RUnlock()
 	// 执行查找
 	return p.deviceCacheList.Get(id)
-}
-
-// 拷贝流
-func (p *Control) copyStream(handle *webcam.Webcam) ([]byte, error) {
-	// 读取一帧
-	buf, index, err := handle.GetFrame()
-	// 取流是否异常
-	if err != nil {
-		return nil, err
-	}
-	// 延迟释放
-	defer handle.ReleaseFrame(index)
-
-	// 拷贝流
-	copyBuf := make([]byte, len(buf))
-	wn := copy(copyBuf, buf)
-	if wn != len(buf) {
-		return nil, camera.ErrCopyStreamFail
-	}
-
-	// OK
-	return copyBuf, nil
-}
-
-// 刷新相机流
-func (p *Control) flushStream(handle *webcam.Webcam) {
-	// 捕获异常
-	defer func() {
-		if e := recover(); e != nil {
-			// 打印异常
-			fmt.Fprintln(os.Stderr, "FlushStream Panic: ", e)
-		}
-		// 移除一个组员
-		p.flushStreamWG.Done()
-	}()
-
-	// 死循环刷流
-	for {
-		// 等待Linux取流信号
-		err := handle.WaitForFrame(5)
-		// 等待信号
-		select {
-		// 请求关闭相机
-		case <-p.closeSignal.Done():
-			// 结束循环
-			return
-
-		// 默认处理方式
-		default:
-			// 预声明
-			var reply *AsyncThreadResult
-			// 取流是否异常
-			if err != nil {
-				// 打印异常
-				fmt.Fprintln(os.Stderr, "WaitForFrame: "+err.Error())
-				// 构建响应
-				reply = &AsyncThreadResult{
-					Err:   err,
-					Bytes: nil,
-				}
-			} else {
-				// 拷贝流
-				data, err := p.copyStream(handle)
-				// 构建响应
-				reply = &AsyncThreadResult{
-					Err:   err,
-					Bytes: data,
-				}
-			}
-
-			// 管道处理
-			select {
-			// 尝试发送
-			case p.streamCacheChannel <- reply:
-				// 发送成功啥也不做
-			// 发送失败直接丢弃
-			default:
-				// 默认丢弃
-			}
-		}
-	}
 }
 
 // Open 打开相机
@@ -328,7 +370,7 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 	// 打开新的相机
 	tmpHandle, err := webcam.Open(cameraInfo.SymbolicLink)
 	if err != nil {
-		return errors.Join(camera.ErrOpenFail, err)
+		return errors.Join(camera.ErrDeviceOpenFailed, err)
 	}
 	defer func() {
 		// 后续操作是否存在异常
@@ -348,15 +390,15 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		// 赋值选择的分辨率
 		_, w, h, err := tmpHandle.SetImageFormat(C.V4L2_PIX_FMT_MJPEG, sInfo.Width, sInfo.Height)
 		if err != nil {
-			return errors.Join(camera.ErrSetConfigInfoFail, err)
+			return errors.Join(camera.ErrSetDeviceConfigFailed, err)
 		}
 		err = tmpHandle.SetFramerate(float32(sInfo.FPS))
 		if err != nil {
-			return errors.Join(camera.ErrSetConfigInfoFail, err)
+			return errors.Join(camera.ErrSetDeviceConfigFailed, err)
 		}
 		fps, err := tmpHandle.GetFramerate()
 		if err != nil {
-			return errors.Join(camera.ErrGetCurrConfigInfoFail, err)
+			return errors.Join(camera.ErrGetDeviceConfigFailed, err)
 		}
 		// 赋值配置后的结果
 		info = camera.DeviceConfig{
@@ -373,15 +415,15 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		// 赋值选择的分辨率
 		_, w, h, err := tmpHandle.SetImageFormat(C.V4L2_PIX_FMT_MJPEG, sInfo.Width, sInfo.Height)
 		if err != nil {
-			return errors.Join(camera.ErrSetConfigInfoFail, err)
+			return errors.Join(camera.ErrSetDeviceConfigFailed, err)
 		}
 		err = tmpHandle.SetFramerate(float32(sInfo.FPS))
 		if err != nil {
-			return errors.Join(camera.ErrSetConfigInfoFail, err)
+			return errors.Join(camera.ErrSetDeviceConfigFailed, err)
 		}
 		fps, err := tmpHandle.GetFramerate()
 		if err != nil {
-			return errors.Join(camera.ErrGetCurrConfigInfoFail, err)
+			return errors.Join(camera.ErrGetDeviceConfigFailed, err)
 		}
 		// 赋值配置后的结果
 		info = camera.DeviceConfig{
@@ -394,7 +436,7 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 	// 开启取流线程
 	err = tmpHandle.StartStreaming()
 	if err != nil {
-		return errors.Join(camera.ErrStartStreamingFail, err)
+		return errors.Join(camera.ErrRunStreamingFailed, err)
 	}
 
 	// 赋值新的相机关闭信号管道
@@ -406,40 +448,18 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 	// 忘刷流线程分组增加一个组员
 	p.flushStreamWG.Add(1)
 	// 异步循环刷新缓冲区
-	go p.flushStream(tmpHandle)
+	go p.flushFrame(tmpHandle)
 
-	// 最大连续取流50次，有一次成功就可以
-	for i := 0; i < 50; i++ {
-		// 等待相机就绪
-		select {
-		// 相机取流成功
-		case imgRes := <-p.streamCacheChannel:
-			if imgRes.Err != nil {
-				err = imgRes.Err
-				continue
-			}
-			// 转码JPEG图像
-			var imgConf image.Config
-			imgConf, err = jpeg.DecodeConfig(bytes.NewReader(imgRes.Bytes))
-			if err != nil {
-				continue
-			}
-			// 赋值图像宽高
-			p.deviceSupportInfo.Width = uint32(imgConf.Width)
-			p.deviceSupportInfo.Height = uint32(imgConf.Height)
-			p.deviceSupportInfo.FPS = info.FPS
-			// OK
-			return nil
-
-		// 相机取流超时
-		case <-time.After(time.Second * 3):
-			err = camera.ErrReadChannelRecvTimeout
-			continue
-		}
+	// 获取一帧图像，提取其分辨率
+	_, err = p.tryGetFrame(&p.deviceSupportInfo.Width, &p.deviceSupportInfo.Height)
+	if err != nil {
+		return err
 	}
+	// 赋值帧率
+	p.deviceSupportInfo.FPS = info.FPS
 
-	// 返回异常状态
-	return err
+	// OK
+	return nil
 }
 
 // GetDeviceConfigInfo 获取当前设备配置信息
@@ -454,55 +474,31 @@ func (p *Control) GetCurrDeviceConfigInfo() (*camera.Device, *camera.DeviceConfi
 
 	// 检查相机是否已打开
 	if p.deviceHandle == nil {
-		return nil, nil, camera.ErrNotOpen
+		return nil, nil, camera.ErrDeviceNotOpen
 	}
 
 	// 返回结果
 	return p.deviceInfo.Clone(), p.deviceSupportInfo.Clone(), nil
 }
 
-// GetStream 获取图片流
+// GetStream 获取帧
 //
+//	@param	outWidth	需要解析图像宽高时请传入地址，以便于内部赋值
+//	@param	outHeight	需要解析图像宽高时请传入地址，以便于内部赋值
 //	@return	图片流
 //	@return	异常信息
-func (p *Control) GetStream() ([]byte, error) {
+func (p *Control) GetFrame(outWidth, outHeight *uint32) ([]byte, error) {
 	// 操作加锁
 	p.rwmutex.Lock()
 	defer p.rwmutex.Unlock()
 
 	// 检查相机是否已打开
 	if p.deviceHandle == nil {
-		return nil, camera.ErrNotOpen
+		return nil, camera.ErrDeviceNotOpen
 	}
 
-	// 执行取流，并做好取流失败重试准备
-	for i := 1; i <= GetStreamRetryCount; i++ {
-		// 等待取流完成或者取流超时
-		select {
-		case res := <-p.streamCacheChannel: // 取流完成信号
-			// 是否异常
-			if res.Err != nil {
-				// 是否需要尝试再次取流
-				if errors.Is(res.Err, new(webcam.Timeout)) && i < GetStreamRetryCount {
-					continue
-				}
-				// Error
-				return nil, res.Err
-			}
-			// OK
-			return res.Bytes, nil
-		case <-time.After(time.Millisecond * 50): // 取流超时信号
-			// 是否需要尝试再次取流
-			if i < GetStreamRetryCount {
-				continue
-			}
-			// Timeout
-			return nil, camera.ErrReadChannelRecvTimeout
-		}
-	}
-
-	// Timeout
-	return nil, camera.ErrReadChannelRecvTimeout
+	// 尝试获取帧
+	return p.tryGetFrame(outWidth, outHeight)
 }
 
 // Close 关闭已打开的相机

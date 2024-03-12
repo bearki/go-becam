@@ -4,6 +4,9 @@ package camera
 type DeviceList []*Device
 
 func (s DeviceList) Clone() DeviceList {
+	if len(s) == 0 {
+		return nil
+	}
 	res := make(DeviceList, 0, len(s))
 	for _, v := range s {
 		res = append(res, v.Clone())
@@ -22,5 +25,5 @@ func (s DeviceList) Get(id string) (*Device, error) {
 	}
 
 	// 默认为找不到匹配的相机
-	return nil, ErrNotFoundMatchCamera
+	return nil, ErrDeviceNotFound
 }

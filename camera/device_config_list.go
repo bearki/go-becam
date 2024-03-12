@@ -23,7 +23,7 @@ func (s DeviceConfigList) Get(val DeviceConfig) (*DeviceConfig, error) {
 	}
 
 	// 默认未查询到分辨率
-	return nil, ErrNotFoundMatchDeviceConfigInfo
+	return nil, ErrDeviceConfigNotFound
 }
 
 // GetMostSimilar 查找与目标配置信息最相似的配置信息
@@ -102,5 +102,5 @@ func (s DeviceConfigList) GetMostSimilar(val DeviceConfig) (*DeviceConfig, error
 	}
 
 	// 默认未查询到分辨率
-	return nil, ErrNotFoundMatchDeviceConfigInfo
+	return nil, ErrDeviceConfigNotFound
 }

@@ -1,28 +1,29 @@
 #define UNICODE
-#include <initguid.h>
-#include <winnls.h>
+#include "dshow_windows.hpp"
+
+#include <devpkey.h>
 #include <dshow.h>
+#include <initguid.h>
 #include <mmsystem.h>
 #include <qedit.h>
-#include <unistd.h>
 #include <setupapi.h>
-#include <devpkey.h>
+#include <unistd.h>
+#include <winnls.h>
+
 #include <iostream>
-#include "dshow.hpp"
+
 #include "_cgo_export.h"
 
 // printErr shows string representation of HRESULT.
 // This is for debugging.
-void printErr(HRESULT hr)
-{
+void printErr(HRESULT hr) {
     char buf[128];
     AMGetErrorTextA(hr, buf, 128);
     fprintf(stderr, "%s\n", buf);
 }
 
 // utf16Decode returns UTF-8 string from UTF-16 string.
-std::string utf16Decode(LPOLESTR olestr)
-{
+std::string utf16Decode(LPOLESTR olestr) {
     std::wstring wstr(olestr);
     const int len = WideCharToMultiByte(
         CP_UTF8, 0,
@@ -37,19 +38,16 @@ std::string utf16Decode(LPOLESTR olestr)
 }
 
 // getPin is a helper to get I/O pin of DirectShow filter.
-IPin *getPin(IBaseFilter *filter, PIN_DIRECTION dir)
-{
+IPin *getPin(IBaseFilter *filter, PIN_DIRECTION dir) {
     IEnumPins *enumPins;
     if (FAILED(filter->EnumPins(&enumPins)))
         return nullptr;
 
     IPin *pin;
-    while (enumPins->Next(1, &pin, nullptr) == S_OK)
-    {
+    while (enumPins->Next(1, &pin, nullptr) == S_OK) {
         PIN_DIRECTION d;
         pin->QueryDirection(&d);
-        if (d == dir)
-        {
+        if (d == dir) {
             enumPins->Release();
             return pin;
         }
@@ -61,8 +59,7 @@ IPin *getPin(IBaseFilter *filter, PIN_DIRECTION dir)
 
 // getPath returns path of the device.
 // returned pointer must be released by free() after use.
-char *getPath(IMoniker *moniker)
-{
+char *getPath(IMoniker *moniker) {
     LPOLESTR path;
     if (FAILED(moniker->GetDisplayName(nullptr, nullptr, &path)))
         return nullptr;
@@ -80,21 +77,17 @@ char *getPath(IMoniker *moniker)
 
 // getLocationInfo returns device path of the device.
 // returned pointer must be released by free() after use.
-char *getLocationInfo(IMoniker *moniker)
-{
+char *getLocationInfo(IMoniker *moniker) {
     IPropertyBag *pPropBag;
-    if (FAILED(moniker->BindToStorage(0, 0, IID_IPropertyBag, (void **)&pPropBag)))
-    {
+    if (FAILED(moniker->BindToStorage(0, 0, IID_IPropertyBag, (void **)&pPropBag))) {
         return nullptr;
     }
 
     VARIANT locationInfo;
     VariantInit(&locationInfo);
-    if (SUCCEEDED(pPropBag->Read(L"DevicePath", &locationInfo, 0)))
-    {
+    if (SUCCEEDED(pPropBag->Read(L"DevicePath", &locationInfo, 0))) {
         HDEVINFO hDevInfo = SetupDiCreateDeviceInfoList(NULL, NULL);
-        if (INVALID_HANDLE_VALUE == hDevInfo)
-        {
+        if (INVALID_HANDLE_VALUE == hDevInfo) {
             return nullptr;
         }
 
@@ -108,16 +101,13 @@ char *getLocationInfo(IMoniker *moniker)
         spdd.cbSize = sizeof(spdd);
         DWORD dwSize = 0;
 
-        do
-        {
-            if (!SetupDiOpenDeviceInterface(hDevInfo, locationInfo.bstrVal, 0, &spdid))
-            {
+        do {
+            if (!SetupDiOpenDeviceInterface(hDevInfo, locationInfo.bstrVal, 0, &spdid)) {
                 break;
             }
 
             dwSize = sizeof(buf);
-            if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, &spdid, pspdidd, dwSize, &dwSize, &spdd))
-            {
+            if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, &spdid, pspdidd, dwSize, &dwSize, &spdd)) {
                 break;
             }
 
@@ -145,18 +135,15 @@ char *getLocationInfo(IMoniker *moniker)
 
 // getName returns name of the device.
 // returned pointer must be released by free() after use.
-char *getName(IMoniker *moniker)
-{
+char *getName(IMoniker *moniker) {
     IPropertyBag *pPropBag;
-    if (FAILED(moniker->BindToStorage(0, 0, IID_IPropertyBag, (void **)&pPropBag)))
-    {
+    if (FAILED(moniker->BindToStorage(0, 0, IID_IPropertyBag, (void **)&pPropBag))) {
         return nullptr;
     }
 
     VARIANT varName;
     VariantInit(&varName);
-    if (SUCCEEDED(pPropBag->Read(L"FriendlyName", &varName, 0)))
-    {
+    if (SUCCEEDED(pPropBag->Read(L"FriendlyName", &varName, 0))) {
         std::string nameStr = utf16Decode(varName.bstrVal);
         char *ret = new char[nameStr.size() + 1];
         memcpy(ret, nameStr.c_str(), nameStr.size() + 1);
@@ -171,22 +158,19 @@ char *getName(IMoniker *moniker)
 }
 
 // listCamera stores information of the devices to cameraList*.
-int listCamera(cameraList *list, const char **errstr)
-{
+int listCamera(cameraList *list, const char **errstr) {
     ICreateDevEnum *sysDevEnum = nullptr;
     IEnumMoniker *enumMon = nullptr;
 
     if (FAILED(CoCreateInstance(
             CLSID_SystemDeviceEnum, nullptr, CLSCTX_INPROC,
-            IID_ICreateDevEnum, (void **)&sysDevEnum)))
-    {
+            IID_ICreateDevEnum, (void **)&sysDevEnum))) {
         *errstr = errEnumDevice;
         goto fail;
     }
 
     if (FAILED(sysDevEnum->CreateClassEnumerator(
-            CLSID_VideoInputDeviceCategory, &enumMon, 0)))
-    {
+            CLSID_VideoInputDeviceCategory, &enumMon, 0))) {
         *errstr = errEnumDevice;
         goto fail;
     }
@@ -194,16 +178,14 @@ int listCamera(cameraList *list, const char **errstr)
     safeRelease(&sysDevEnum);
 
     // 检查是否有枚举到设备
-    if (enumMon == nullptr)
-    {
+    if (enumMon == nullptr) {
         return 0;
     }
 
     {
         IMoniker *moniker;
         list->num = 0;
-        while (enumMon->Next(1, &moniker, nullptr) == S_OK)
-        {
+        while (enumMon->Next(1, &moniker, nullptr) == S_OK) {
             moniker->Release();
             list->num++;
         }
@@ -214,8 +196,7 @@ int listCamera(cameraList *list, const char **errstr)
         list->name = new char *[list->num];
 
         int i = 0;
-        while (enumMon->Next(1, &moniker, nullptr) == S_OK)
-        {
+        while (enumMon->Next(1, &moniker, nullptr) == S_OK) {
             list->path[i] = getPath(moniker);
             list->locationInfo[i] = getLocationInfo(moniker);
             list->name[i] = getName(moniker);
@@ -234,36 +215,26 @@ fail:
 }
 
 // freeCameraList frees all resources stored in cameraList*.
-int freeCameraList(cameraList *list, const char **errstr)
-{
-    if (list->path != nullptr)
-    {
-        for (int i = 0; i < list->num; ++i)
-        {
-            if (list->path[i])
-            {
+int freeCameraList(cameraList *list, const char **errstr) {
+    if (list->path != nullptr) {
+        for (int i = 0; i < list->num; ++i) {
+            if (list->path[i]) {
                 delete list->path[i];
             }
         }
         delete list->path;
     }
-    if (list->locationInfo != nullptr)
-    {
-        for (int i = 0; i < list->num; ++i)
-        {
-            if (list->locationInfo[i])
-            {
+    if (list->locationInfo != nullptr) {
+        for (int i = 0; i < list->num; ++i) {
+            if (list->locationInfo[i]) {
                 delete list->locationInfo[i];
             }
         }
         delete list->locationInfo;
     }
-    if (list->name != nullptr)
-    {
-        for (int i = 0; i < list->num; ++i)
-        {
-            if (list->name[i])
-            {
+    if (list->name != nullptr) {
+        for (int i = 0; i < list->num; ++i) {
+            if (list->name[i]) {
                 delete list->name[i];
             }
         }
@@ -273,22 +244,19 @@ int freeCameraList(cameraList *list, const char **errstr)
 }
 
 // selectCamera stores pointer to the selected device IMoniker* according to the configs in camera*.
-int selectCamera(camera *cam, IMoniker **monikerSelected, const char **errstr)
-{
+int selectCamera(camera *cam, IMoniker **monikerSelected, const char **errstr) {
     ICreateDevEnum *sysDevEnum = nullptr;
     IEnumMoniker *enumMon = nullptr;
 
     if (FAILED(CoCreateInstance(
             CLSID_SystemDeviceEnum, nullptr, CLSCTX_INPROC,
-            IID_ICreateDevEnum, (void **)&sysDevEnum)))
-    {
+            IID_ICreateDevEnum, (void **)&sysDevEnum))) {
         *errstr = errEnumDevice;
         goto fail;
     }
 
     if (FAILED(sysDevEnum->CreateClassEnumerator(
-            CLSID_VideoInputDeviceCategory, &enumMon, 0)))
-    {
+            CLSID_VideoInputDeviceCategory, &enumMon, 0))) {
         *errstr = errEnumDevice;
         goto fail;
     }
@@ -297,11 +265,9 @@ int selectCamera(camera *cam, IMoniker **monikerSelected, const char **errstr)
 
     {
         IMoniker *moniker;
-        while (enumMon->Next(1, &moniker, nullptr) == S_OK)
-        {
+        while (enumMon->Next(1, &moniker, nullptr) == S_OK) {
             char *path = getPath(moniker);
-            if (strcmp(cam->path, path) != 0)
-            {
+            if (strcmp(cam->path, path) != 0) {
                 free(path);
                 safeRelease(&moniker);
                 continue;
@@ -323,8 +289,7 @@ fail:
 }
 
 // getResolution stores list of the device to camera*.
-int getResolution(camera *cam, const char **errstr)
-{
+int getResolution(camera *cam, const char **errstr) {
     cam->props = nullptr;
 
     IMoniker *moniker = nullptr;
@@ -333,8 +298,7 @@ int getResolution(camera *cam, const char **errstr)
     IAMStreamConfig *config = nullptr;
     IPin *src = nullptr;
 
-    if (!selectCamera(cam, &moniker, errstr))
-    {
+    if (!selectCamera(cam, &moniker, errstr)) {
         goto fail;
     }
 
@@ -342,16 +306,14 @@ int getResolution(camera *cam, const char **errstr)
     safeRelease(&moniker);
 
     src = getPin(captureFilter, PINDIR_OUTPUT);
-    if (src == nullptr)
-    {
+    if (src == nullptr) {
         *errstr = errGetConfig;
         goto fail;
     }
 
     // Getting IAMStreamConfig is stub on Wine. Requires real Windows.
     if (FAILED(src->QueryInterface(
-            IID_IAMStreamConfig, (void **)&config)))
-    {
+            IID_IAMStreamConfig, (void **)&config))) {
         *errstr = errGetConfig;
         goto fail;
     }
@@ -359,16 +321,14 @@ int getResolution(camera *cam, const char **errstr)
 
     {
         int count = 0, size = 0;
-        if (FAILED(config->GetNumberOfCapabilities(&count, &size)))
-        {
+        if (FAILED(config->GetNumberOfCapabilities(&count, &size))) {
             *errstr = errGetConfig;
             goto fail;
         }
         cam->props = new imageProp[count];
 
         int iProp = 0;
-        for (int i = 0; i < count; ++i)
-        {
+        for (int i = 0; i < count; ++i) {
             VIDEO_STREAM_CONFIG_CAPS caps;
             AM_MEDIA_TYPE *mediaType;
             if (FAILED(config->GetStreamCaps(i, &mediaType, (BYTE *)&caps)))
@@ -404,32 +364,27 @@ fail:
 }
 
 // freeResolution frees all resources stored in props*.
-void freeResolution(camera *cam)
-{
-    if (cam->props)
-    {
+void freeResolution(camera *cam) {
+    if (cam->props) {
         delete cam->props;
         cam->props = nullptr;
     }
 }
 
 // SampleCB is not used in this app.
-HRESULT SampleGrabberCallback::SampleCB(double sampleTime, IMediaSample *sample)
-{
+HRESULT SampleGrabberCallback::SampleCB(double sampleTime, IMediaSample *sample) {
     return S_OK;
 }
 
 // BufferCB receives image from DirectShow.
-HRESULT SampleGrabberCallback::BufferCB(double sampleTime, BYTE *buf, LONG len)
-{
+HRESULT SampleGrabberCallback::BufferCB(double sampleTime, BYTE *buf, LONG len) {
     imageCallback((char *)buf, (size_t)len);
     return S_OK;
 }
 
 // openCamera opens a camera and stores interface handler to camera*.
 // camera* should be freed by freeCamera() after use.
-int openCamera(camera *cam, const char **errstr)
-{
+int openCamera(camera *cam, const char **errstr) {
     cam->grabber = nullptr;
     cam->mediaControl = nullptr;
     cam->callback = nullptr;
@@ -446,8 +401,7 @@ int openCamera(camera *cam, const char **errstr)
     IPin *end = nullptr;
     IPin *nul = nullptr;
 
-    if (!selectCamera(cam, &moniker, errstr))
-    {
+    if (!selectCamera(cam, &moniker, errstr)) {
         goto fail;
     }
     moniker->BindToObject(0, 0, IID_IBaseFilter, (void **)&captureFilter);
@@ -455,35 +409,30 @@ int openCamera(camera *cam, const char **errstr)
 
     if (FAILED(CoCreateInstance(
             CLSID_FilterGraph, nullptr, CLSCTX_INPROC,
-            IID_IGraphBuilder, (void **)&graphBuilder)))
-    {
+            IID_IGraphBuilder, (void **)&graphBuilder))) {
         *errstr = errGraphBuilder;
         goto fail;
     }
 
     if (FAILED(graphBuilder->QueryInterface(
-            IID_IMediaControl, (void **)&mediaControl)))
-    {
+            IID_IMediaControl, (void **)&mediaControl))) {
         *errstr = errNoControl;
         goto fail;
     }
 
-    if (FAILED(graphBuilder->AddFilter(captureFilter, L"capture")))
-    {
+    if (FAILED(graphBuilder->AddFilter(captureFilter, L"capture"))) {
         *errstr = errAddFilter;
         goto fail;
     }
 
     if (FAILED(CoCreateInstance(
             CLSID_SampleGrabber, nullptr, CLSCTX_INPROC,
-            IID_IBaseFilter, (void **)&grabberFilter)))
-    {
+            IID_IBaseFilter, (void **)&grabberFilter))) {
         *errstr = errGrabber;
         goto fail;
     }
 
-    if (FAILED(grabberFilter->QueryInterface(IID_ISampleGrabber, (void **)&grabber)))
-    {
+    if (FAILED(grabberFilter->QueryInterface(IID_ISampleGrabber, (void **)&grabber))) {
         *errstr = errGrabber;
         goto fail;
     }
@@ -507,29 +456,25 @@ int openCamera(camera *cam, const char **errstr)
         // videoInfoHdr.bmiHeader.biBitCount = 16;
         videoInfoHdr.bmiHeader.biCompression = MAKEFOURCC('M', 'J', 'P', 'G');
         mediaType.pbFormat = (BYTE *)&videoInfoHdr;
-        if (FAILED(grabber->SetMediaType(&mediaType)))
-        {
+        if (FAILED(grabber->SetMediaType(&mediaType))) {
             *errstr = errGrabber;
             goto fail;
         }
     }
 
-    if (FAILED(graphBuilder->AddFilter(grabberFilter, L"grabber")))
-    {
+    if (FAILED(graphBuilder->AddFilter(grabberFilter, L"grabber"))) {
         *errstr = errAddFilter;
         goto fail;
     }
 
     if (FAILED(CoCreateInstance(
             CLSID_NullRenderer, nullptr, CLSCTX_INPROC,
-            IID_IBaseFilter, (void **)&nullFilter)))
-    {
+            IID_IBaseFilter, (void **)&nullFilter))) {
         *errstr = errTerminator;
         goto fail;
     }
 
-    if (FAILED(graphBuilder->AddFilter(nullFilter, L"bull")))
-    {
+    if (FAILED(graphBuilder->AddFilter(nullFilter, L"bull"))) {
         *errstr = errAddFilter;
         goto fail;
     }
@@ -538,8 +483,7 @@ int openCamera(camera *cam, const char **errstr)
     src = getPin(captureFilter, PINDIR_OUTPUT);
     dst = getPin(grabberFilter, PINDIR_INPUT);
     if (src == nullptr || dst == nullptr ||
-        FAILED(hr = graphBuilder->Connect(src, dst)))
-    {
+        FAILED(hr = graphBuilder->Connect(src, dst))) {
         *errstr = errConnectFilters;
         goto fail;
     }
@@ -550,8 +494,7 @@ int openCamera(camera *cam, const char **errstr)
     end = getPin(grabberFilter, PINDIR_OUTPUT);
     nul = getPin(nullFilter, PINDIR_INPUT);
     if (end == nullptr || nul == nullptr ||
-        FAILED(hr = graphBuilder->Connect(end, nul)))
-    {
+        FAILED(hr = graphBuilder->Connect(end, nul))) {
         *errstr = errConnectFilters;
         goto fail;
     }
@@ -593,16 +536,14 @@ fail:
 }
 
 // freeCamera closes device and frees all resources allocated by openCamera().
-void freeCamera(camera *cam)
-{
+void freeCamera(camera *cam) {
     if (cam->mediaControl)
         ((IMediaControl *)cam->mediaControl)->Stop();
 
     safeRelease((ISampleGrabber **)&cam->grabber);
     safeRelease((IMediaControl **)&cam->mediaControl);
 
-    if (cam->callback)
-    {
+    if (cam->callback) {
         ((SampleGrabberCallback *)cam->callback)->Release();
         delete ((SampleGrabberCallback *)cam->callback);
         cam->callback = nullptr;

@@ -7,35 +7,35 @@ import (
 )
 
 // 相机异常错误号
-type Errno uint
+type errno uint
 
 const (
-	ErrQueryListFail                 Errno = iota + 1 // 查询相机列表失败
-	ErrNotFoundMatchCamera                            // 未查询到匹配的相机
-	ErrOpenFail                                       // 打开相机失败
-	ErrStartStreamingFail                             // 启动取流线程失败
-	ErrSetConfigInfoFail                              // 设置相机分辨率失败
-	ErrNotOpen                                        // 相机未打开
-	ErrWriteChannelSendTimeout                        // 最新图像写信号发送超时
-	ErrWriteChannelRecvTimeout                        // 最新图像写信号接收超时
-	ErrReadChannelSendTimeout                         // 最新图像读信号发送超时
-	ErrReadChannelRecvTimeout                         // 最新图像读信号接收超时
-	ErrGetStreamFail                                  // 取流失败
-	ErrCopyStreamFail                                 // 拷贝流失败
-	ErrNotFoundMatchDeviceConfigInfo                  // 未查询到匹配的设备配置信息
-	ErrGetCurrDeviceInfoFail                          // 获取当前相机的设备信息失败
-	ErrGetCurrConfigInfoFail                          // 获取当前相机的配置信息失败
+	_                             errno = iota // 占位
+	ErrDeviceUnsupportMjpegFormat              // 设备不支持MJPEG格式
+	ErrDeviceNotFound                          // 设备未找到
+	ErrWaitForFrameFailed                      // 等待帧失败
+	ErrGetFrameFailed                          // 获取帧失败
+	ErrCopyFrameFailed                         // 拷贝帧失败
+	ErrGetFrameTimout                          // 获取帧超时
+	ErrDeviceOpenFailed                        // 设备打开失败
+	ErrDeviceConfigNotFound                    // 设备配置未找到
+	ErrSetDeviceConfigFailed                   // 修改设备配置失败
+	ErrGetDeviceConfigFailed                   // 获取设备配置失败
+	ErrRunStreamingFailed                      // 运行取流线程失败
+	ErrDecodeJpegImageFailed                   // 解码JPEG图像失败
+	ErrDeviceNotOpen                           // 设备未打开
 )
 
-var errLangMap = map[Errno]map[goi18n.Code]string{}
+// 错误码描述映射
+var errMap = map[errno]map[goi18n.Code]string{}
 
-func (e Errno) Error() string {
+func (e errno) Error() string {
 	// 是否存在该错误
-	errLang, ok := errLangMap[e]
+	errLang, ok := errMap[e]
 	if !ok {
-		return fmt.Sprintf("unknown camera errno: %d", e)
+		return fmt.Sprintf("unknown becam errno: %d", e)
 	} else if errLang == nil {
-		return fmt.Sprintf("raw camera errno: %d", e)
+		return fmt.Sprintf("raw becam errno: %d", e)
 	}
 	// 是否存在对应语言
 	errStr, ok := errLang[goi18n.GetEnv()]
@@ -57,5 +57,5 @@ func (e Errno) Error() string {
 		return v
 	}
 	// 不存在语言时
-	return fmt.Sprintf("raw camera errno: %d", e)
+	return fmt.Sprintf("raw becam errno: %d", e)
 }

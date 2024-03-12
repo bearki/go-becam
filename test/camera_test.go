@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/bearki/becam"
 	"github.com/bearki/becam/camera"
@@ -27,13 +28,21 @@ func TestCamera(t *testing.T) {
 	}
 	defer cameraManage.Close()
 
-	img, err := cameraManage.GetStream()
-	if err != nil {
-		t.Fatal(err)
+	now := time.Now()
+
+	var w, h uint32
+	var img []byte
+	for i := 0; i < 1000; i++ {
+		img, err = cameraManage.GetFrame(&w, &h)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = os.WriteFile("test.jpg", img, 0644)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
-	err = os.WriteFile("test.jpg", img, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Logf("图像分辨率：%d*%dpx，实际帧率：%d", w, h, time.Since(now).Milliseconds()/1000)
+
 }

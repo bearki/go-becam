@@ -1,5 +1,8 @@
 package camera
 
+// 获取帧失败重试次数
+const GetFrameRetryCount = 50
+
 // Manager 相机管理器
 type Manager interface {
 	// GetList 获取相机列表
@@ -29,11 +32,11 @@ type Manager interface {
 	//	@return	异常信息
 	GetCurrDeviceConfigInfo() (*Device, *DeviceConfig, error)
 
-	// GetStream 获取图片流
+	// GetStream 获取帧
 	//
 	//	@return	图片流
 	//	@return	异常信息
-	GetStream() ([]byte, error)
+	GetFrame(outWidth, outHeight *uint32) ([]byte, error)
 
 	// Close 关闭已打开的相机
 	Close()
