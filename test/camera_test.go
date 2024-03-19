@@ -22,16 +22,24 @@ func TestCamera(t *testing.T) {
 		t.Fatal("未找到相机")
 	}
 
+	var index int = 0
+	var info *camera.DeviceConfig
 	for i, v := range list {
-		fmt.Printf("%d. %s (%s)\n", i, v.ID, v.Name)
+		fmt.Printf("%d. %s (%s)\n", i+1, v.ID, v.Name)
+		for j, w := range v.ConfigList {
+			fmt.Printf("\t%d. %d*%dp (%d)\n", j+1, w.Width, w.Height, w.FPS)
+			if info == nil && w.Width == 1920 {
+				index = i
+				info = &camera.DeviceConfig{
+					Width:  w.Width,
+					Height: w.Height,
+					FPS:    w.FPS,
+				}
+			}
+		}
 	}
 
-	// 等待选择相机
-	var index int
-	fmt.Scanf("%d\n", &index)
-	fmt.Println(index)
-
-	err = cameraManage.Open(list[index].ID, camera.AutoDeviceConfig)
+	err = cameraManage.Open(list[index].ID, *info)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +49,7 @@ func TestCamera(t *testing.T) {
 
 	var w, h uint32
 	var img []byte
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 10000000; i++ {
 		img, err = cameraManage.GetFrame(&w, &h)
 		if err != nil {
 			t.Fatal(err)
@@ -53,5 +61,4 @@ func TestCamera(t *testing.T) {
 	}
 
 	t.Logf("图像分辨率：%d*%dpx，实际帧率：%d", w, h, time.Since(now).Milliseconds()/1000)
-
 }
