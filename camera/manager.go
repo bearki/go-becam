@@ -7,6 +7,9 @@ const (
 
 // Manager 相机管理器
 type Manager interface {
+	// 释放所有相机资源
+	Free()
+
 	// GetList 获取相机列表
 	//
 	//	@return 相机列表

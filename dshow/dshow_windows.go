@@ -159,6 +159,9 @@ func (p *Control) tryGetFrame(parseW, parseH *uint32) ([]byte, error) {
 
 // 释放所有相机资源
 func (p *Control) Free() {
+	// 关闭已打开的相机
+	p.Close()
+
 	// 操作加锁
 	p.rwmutex.Lock()
 	defer p.rwmutex.Unlock()
@@ -166,6 +169,9 @@ func (p *Control) Free() {
 	// 释放句柄
 	C.BecamFree(&p.handle)
 	p.handle = nil
+	p.deviceCacheList = nil
+	p.deviceInfo = camera.Device{}
+	p.deviceSupportInfo = camera.DeviceConfig{}
 }
 
 // GetList 获取相机列表
