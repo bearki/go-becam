@@ -5,6 +5,10 @@
 
 # ignore files
 /test/*
+*.exe
+*.jpg
+*.jpeg
+*.png
 
 # not ignore files
 !/test/*.go
