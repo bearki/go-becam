@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/bearki/becam"
-	"github.com/bearki/becam/camera"
+	"github.com/bearki/go-becam"
+	"github.com/bearki/go-becam/camera"
 )
 
 func main() {

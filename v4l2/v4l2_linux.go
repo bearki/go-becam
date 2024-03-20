@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bearki/becam/camera"
+	"github.com/bearki/go-becam/camera"
 	"github.com/blackjack/webcam"
 )
 

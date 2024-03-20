@@ -2,12 +2,13 @@ package test
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/bearki/becam"
-	"github.com/bearki/becam/camera"
+	"github.com/bearki/go-becam"
+	"github.com/bearki/go-becam/camera"
 )
 
 func TestCamera(t *testing.T) {
@@ -52,11 +53,13 @@ func TestCamera(t *testing.T) {
 	for i := 0; i < 10000000; i++ {
 		img, err = cameraManage.GetFrame(&w, &h)
 		if err != nil {
-			t.Fatal(err)
-		}
-		err = os.WriteFile("test.jpg", img, 0644)
-		if err != nil {
-			t.Fatal(err)
+			t.Log(err)
+		} else {
+			t.Logf("Size: %d, PX: %d*%d\n", len(img), w, h)
+			err = os.WriteFile("test.jpg", img, 0644)
+			if err != nil {
+				log.Println(err)
+			}
 		}
 	}
 

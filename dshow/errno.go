@@ -44,6 +44,7 @@ const (
 	ErrDeviceNotOpen                     // 设备未打开
 	ErrFrameEmpty                        // 视频帧为空
 	ErrFrameNotUpdate                    // 视频帧未更新
+	ErrRepeatOpening                     // 请勿频繁重复打开相机
 )
 
 // 错误码变量名映射
@@ -73,6 +74,7 @@ var errVarName = map[errno]string{
 	ErrDeviceNotOpen:        "ErrDeviceNotOpen",
 	ErrFrameEmpty:           "ErrFrameEmpty",
 	ErrFrameNotUpdate:       "ErrFrameNotUpdate",
+	ErrRepeatOpening:        "ErrRepeatOpening",
 }
 
 // 错误码描述映射

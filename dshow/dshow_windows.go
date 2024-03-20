@@ -1,14 +1,9 @@
-/**
-有备无患
--static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++
-*/
-
 package dshow
 
 // #cgo windows,386 CFLAGS: -I${SRCDIR}/libbecamdshow_windows_i686/include
 // #cgo windows,386 LDFLAGS: -L${SRCDIR}/libbecamdshow_windows_i686/lib -lbecamdshow
-// #cgo windows,amd64 CFLAGS: -I${SRCDIR}/libbecamdshow_windows_amd64/include
-// #cgo windows,amd64 LDFLAGS: -L${SRCDIR}/libbecamdshow_windows_amd64/lib -lbecamdshow
+// #cgo windows,amd64 CFLAGS: -I${SRCDIR}/libbecamdshow_windows_x86_64/include
+// #cgo windows,amd64 LDFLAGS: -L${SRCDIR}/libbecamdshow_windows_x86_64/lib -lbecamdshow
 // #cgo LDFLAGS: -lstrmiids -lole32 -loleaut32 -Wl,-Bstatic -lstdc++
 // #include <stdlib.h>
 // #include "becam_helper.h"
@@ -26,7 +21,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/bearki/becam/camera"
+	"github.com/bearki/go-becam/camera"
 )
 
 const (
@@ -280,8 +275,11 @@ func (p *Control) GetDeviceWithID(id string) (*camera.Device, error) {
 //	@param	info	分辨率信息
 //	@return	异常信息
 func (p *Control) Open(id string, info camera.DeviceConfig) error {
-	// 操作加锁
-	p.rwmutex.Lock()
+	// 操作尝试加锁
+	ok := p.rwmutex.TryLock()
+	if !ok {
+		return ErrRepeatOpening
+	}
 	defer p.rwmutex.Unlock()
 
 	// 查询ID对应的相机信息

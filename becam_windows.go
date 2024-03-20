@@ -1,8 +1,8 @@
 package becam
 
 import (
-	"github.com/bearki/becam/camera"
-	"github.com/bearki/becam/dshow"
+	"github.com/bearki/go-becam/camera"
+	"github.com/bearki/go-becam/dshow"
 )
 
 // New 创建相机管理器

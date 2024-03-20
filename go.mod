@@ -1,4 +1,4 @@
-module github.com/bearki/becam
+module github.com/bearki/go-becam
 
 go 1.20
 
