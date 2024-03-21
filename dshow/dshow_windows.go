@@ -161,23 +161,22 @@ func (p *Control) Free() {
 	p.rwmutex.Lock()
 	defer p.rwmutex.Unlock()
 
-	// 释放句柄
-	C.BecamFree(&p.handle)
-	p.handle = nil
+	// 是否需要释放句柄
+	if p.handle != nil {
+		// 释放句柄
+		C.BecamFree(&p.handle)
+		p.handle = nil
+	}
 	p.deviceCacheList = nil
 	p.deviceInfo = camera.Device{}
 	p.deviceSupportInfo = camera.DeviceConfig{}
 }
 
-// GetList 获取相机列表
+// GetList 获取相机列表（无锁）
 //
 //	@return 相机列表
 //	@return 错误信息
-func (p *Control) GetList() (camera.DeviceList, error) {
-	// 操作加锁
-	p.rwmutex.Lock()
-	defer p.rwmutex.Unlock()
-
+func (p *Control) getList() (camera.DeviceList, error) {
 	// 清空缓存列表
 	p.deviceCacheList = nil
 
@@ -256,6 +255,19 @@ func (p *Control) GetList() (camera.DeviceList, error) {
 	return p.deviceCacheList.Clone(), nil
 }
 
+// GetList 获取相机列表（有锁）
+//
+//	@return 相机列表
+//	@return 错误信息
+func (p *Control) GetList() (camera.DeviceList, error) {
+	// 操作加锁
+	p.rwmutex.Lock()
+	defer p.rwmutex.Unlock()
+
+	// 调用内部实现
+	return p.getList()
+}
+
 // GetDeviceWithID 通过相机ID获取缓存的相机信息
 //
 //	@param	id	相机ID
@@ -281,6 +293,15 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		return ErrRepeatOpening
 	}
 	defer p.rwmutex.Unlock()
+
+	// 相机列表为空时获取相机列表
+	if len(p.deviceCacheList) == 0 {
+		// 获取相机列表（必须使用无锁）
+		_, err := p.getList()
+		if err != nil {
+			return err
+		}
+	}
 
 	// 查询ID对应的相机信息
 	cameraInfo, err := p.deviceCacheList.Get(id)
