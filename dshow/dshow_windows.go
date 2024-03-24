@@ -332,6 +332,9 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		info.FPS = sInfo.FPS
 	}
 
+	// 关闭已打开的相机
+	p.close()
+
 	// 转换设备路径
 	devicePath := C.CString(cameraInfo.SymbolicLink)
 	defer C.free(unsafe.Pointer(devicePath))
@@ -403,12 +406,8 @@ func (p *Control) GetFrame(outWidth, outHeight *uint32) ([]byte, error) {
 	return p.tryGetFrame(outWidth, outHeight)
 }
 
-// Close 关闭已打开的相机
-func (p *Control) Close() {
-	// 操作加锁
-	p.rwmutex.Lock()
-	defer p.rwmutex.Unlock()
-
+// 关闭已打开的相机（无锁）
+func (p *Control) close() {
 	// 是否存在已打开的相机
 	if p.handle == nil {
 		return
@@ -421,4 +420,14 @@ func (p *Control) Close() {
 	// 清除当前使用的相机信息
 	p.deviceInfo = camera.Device{}
 	p.deviceSupportInfo = camera.DeviceConfig{}
+}
+
+// Close 关闭已打开的相机
+func (p *Control) Close() {
+	// 操作加锁
+	p.rwmutex.Lock()
+	defer p.rwmutex.Unlock()
+
+	// 调用内部实现
+	p.close()
 }
