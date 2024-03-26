@@ -1,0 +1,31 @@
+ErrDeviceNotFound:
+  zh-cn: "设备未找到"
+  en-us: "Device not found"
+
+ErrDeviceMediaConfigNotFound:
+  zh-cn: "设备媒体配置未找到"
+  en-us: "Device media configuration not found"
+
+ErrGetDeviceMediaConfigFailed:
+  zh-cn: "获取设备媒体配置失败"
+  en-us: "Failed to get device media configuration"
+
+ErrDeviceRepeatOpening:
+  zh-cn: "请勿频繁重复打开设备"
+  en-us: "Please do not repeatedly open the device frequently"
+
+ErrDeviceOpenFailed:
+  zh-cn: "设备打开失败"
+  en-us: "Failed to open the device"
+
+ErrGetFrameFailed:
+  zh-cn: "获取帧失败"
+  en-us: "Failed to get frame"
+
+ErrDecodeJpegImageFailed:
+  zh-cn: "解码JPEG图像失败"
+  en-us: "Failed to decode JPEG image"
+
+ErrDeviceNotOpen:
+  zh-cn: "设备未打开"
+  en-us: "Device is not open"

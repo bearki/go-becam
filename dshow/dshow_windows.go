@@ -35,7 +35,7 @@ func convertStatusCode(code C.StatusCode) error {
 	case C.STATUS_CODE_SUCCESS:
 		return nil
 	case C.STATUS_CODE_NOT_FOUND_DEVICE:
-		return NotFoundDevice
+		return camera.ErrDeviceNotFound
 	case C.STATUS_CODE_ERR_HANDLE_EMPTY:
 		return ErrHandleEmpty
 	case C.STATUS_CODE_ERR_INPUT_PARAM:
@@ -79,7 +79,7 @@ func convertStatusCode(code C.StatusCode) error {
 	case C.STATUS_CODE_ERR_GRABBER_RENDER:
 		return ErrGrabberRender
 	case C.STATUS_CODE_ERR_DEVICE_NOT_OPEN:
-		return ErrDeviceNotOpen
+		return camera.ErrDeviceNotOpen
 	case C.STATUS_CODE_ERR_FRAME_EMPTY:
 		return ErrFrameEmpty
 	case C.STATUS_CODE_ERR_FRAME_NOT_UPDATE:
@@ -139,7 +139,7 @@ func (p *Control) tryGetFrame(parseW, parseH *uint32) ([]byte, error) {
 		imgConf, err := jpeg.DecodeConfig(bytes.NewReader(data))
 		if err != nil {
 			// 返回异常
-			return nil, err
+			return nil, errors.Join(camera.ErrDecodeJpegImageFailed, err)
 		}
 		// 赋值宽高
 		*parseW = uint32(imgConf.Width)
@@ -185,7 +185,7 @@ func (p *Control) getList() (camera.DeviceList, error) {
 	code := C.BecamGetDeviceList(p.handle, &reply)
 	if err := convertStatusCode(code); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
-		return nil, errors.Join(camera.ErrGetDeviceConfigFailed, err)
+		return nil, errors.Join(camera.ErrGetDeviceMediaConfigFailed, err)
 	}
 	defer C.BecamFreeDeviceList(p.handle, &reply)
 
@@ -290,7 +290,7 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 	// 操作尝试加锁
 	ok := p.rwmutex.TryLock()
 	if !ok {
-		return ErrRepeatOpening
+		return camera.ErrDeviceRepeatOpening
 	}
 	defer p.rwmutex.Unlock()
 

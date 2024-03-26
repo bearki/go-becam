@@ -1,0 +1,95 @@
+ErrHandleEmpty:
+  zh-cn: "接口句柄未初始化"
+  en-us: "Handle not initialized"
+
+ErrInputParam:
+  zh-cn: "传入参数错误"
+  en-us: "Invalid input parameter"
+
+ErrInternalParam:
+  zh-cn: "内部参数错误"
+  en-us: "Internal parameter error"
+
+ErrInitCom:
+  zh-cn: "初始化COM库失败"
+  en-us: "Failed to initialize COM library"
+
+ErrCreateEnumerator:
+  zh-cn: "创建设备枚举器失败"
+  en-us: "Failed to create device enumerator"
+
+ErrDeviceEnum:
+  zh-cn: "设备枚举失败"
+  en-us: "Device enumeration failed"
+
+ErrGetDeviceProp:
+  zh-cn: "获取设备属性失败"
+  en-us: "Failed to get device property"
+
+ErrGetStreamCaps:
+  zh-cn: "获取设备流能力失败"
+  en-us: "Failed to get stream capabilities"
+
+ErrNomatchStreamCaps:
+  zh-cn: "未匹配到流能力"
+  en-us: "No matching stream capabilities found"
+
+ErrSetMediaType:
+  zh-cn: "设置媒体类型失败"
+  en-us: "Failed to set media type"
+
+ErrSelectedDevice:
+  zh-cn: "选择设备失败"
+  en-us: "Failed to select device"
+
+ErrCreateGraphBuilder:
+  zh-cn: "创建图像构建器失败"
+  en-us: "Failed to create graph builder"
+
+ErrAddCaptureFilter:
+  zh-cn: "添加捕获过滤器到图像构建器失败"
+  en-us: "Failed to add capture filter to graph builder"
+
+ErrCreateSampleGrabber:
+  zh-cn: "创建样品采集器失败"
+  en-us: "Failed to create sample grabber"
+
+ErrGetSampleGrabberInfc:
+  zh-cn: "获取样品采集器接口失败"
+  en-us: "Failed to get sample grabber interface"
+
+ErrAddSampleGrabber:
+  zh-cn: "添加样品采集器到图像构建器失败"
+  en-us: "Failed to add sample grabber to graph builder"
+
+ErrCreateMediaControl:
+  zh-cn: "创建媒体控制器失败"
+  en-us: "Failed to create media control"
+
+ErrCreateNullRender:
+  zh-cn: "创建空渲染器失败"
+  en-us: "Failed to create null renderer"
+
+ErrAddNullRender:
+  zh-cn: "添加空渲染器到图像构建器失败"
+  en-us: "Failed to add null renderer to graph builder"
+
+ErrCaptureGrabber:
+  zh-cn: "连接捕获器和采集器失败"
+  en-us: "Failed to connect capture filter and sample grabber"
+
+ErrGrabberRender:
+  zh-cn: "连接采集器和渲染器失败"
+  en-us: "Failed to connect sample grabber and renderer"
+
+ErrDeviceNotOpen:
+  zh-cn: "设备未打开"
+  en-us: "Device is not open"
+
+ErrFrameEmpty:
+  zh-cn: "视频帧为空"
+  en-us: "Video frame is empty"
+
+ErrFrameNotUpdate:
+  zh-cn: "视频帧未更新"
+  en-us: "Video frame has not been updated"
