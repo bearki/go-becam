@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// 公共错误码
+// 错误码
 type errno uint
 
 // 包名，以便于错误码能正常描述
