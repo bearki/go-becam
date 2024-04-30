@@ -1,12 +1,10 @@
 package dshow
 
-// #cgo windows,386 CFLAGS: -I${SRCDIR}/libbecamdshow_windows_i686/include
-// #cgo windows,386 LDFLAGS: -L${SRCDIR}/libbecamdshow_windows_i686/lib -lbecamdshow
-// #cgo windows,amd64 CFLAGS: -I${SRCDIR}/libbecamdshow_windows_x86_64/include
-// #cgo windows,amd64 LDFLAGS: -L${SRCDIR}/libbecamdshow_windows_x86_64/lib -lbecamdshow
-// #cgo LDFLAGS: -lstrmiids -lole32 -loleaut32 -Wl,-Bstatic -lstdc++
-// #include <stdlib.h>
-// #include "becam_helper.h"
+/*
+#cgo pkg-config: becamdshow
+#include <stdlib.h>
+#include "becam_helper.h"
+*/
 import "C"
 import (
 	"bytes"

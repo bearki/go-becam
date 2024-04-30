@@ -1,5 +1,6 @@
 {
   "go.toolsEnvVars": {
-    "GO_I18N_CODE": "zh-cn"
+    "GO_I18N_CODE": "zh-cn",
+    "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/windows_x86_64"
   }
 }

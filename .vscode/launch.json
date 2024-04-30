@@ -9,7 +9,11 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd"
+            "program": "${workspaceFolder}/cmd",
+            "env": {
+                "GO_I18N_CODE": "zh-cn",
+                "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/windows_x86_64"
+            },
         }
     ]
 }
