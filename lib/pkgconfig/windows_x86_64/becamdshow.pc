@@ -1,5 +1,5 @@
 # Package Information for pkg-config
-prefix=C:\Users\WORK-XKC\Desktop\Project\Go-Becam\lib\libbecamdshow\libbecamdshow_windows_x86_64
+prefix=D:\Project\go-becam\lib\libbecamdshow\libbecamdshow_windows_x86_64
 libdir=${prefix}/lib
 includedir=${prefix}/include
 

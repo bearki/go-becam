@@ -39,11 +39,10 @@ type Manager interface {
 
 	// GetStream 获取帧
 	//
-	//	@param	outWidth	需要解析图像宽高时请传入地址，以便于内部赋值
-	//	@param	outHeight	需要解析图像宽高时请传入地址，以便于内部赋值
-	//	@return	图片流
+	//	@return	帧数据
+	//	@return 帧信息
 	//	@return	异常信息
-	GetFrame(outWidth, outHeight *uint32) ([]byte, error)
+	GetFrame() ([]byte, *DeviceConfig, error)
 
 	// Close 关闭已打开的相机
 	Close()

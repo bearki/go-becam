@@ -7,6 +7,7 @@ import (
 // DeviceConfigList 相机配置信息列表
 type DeviceConfigList []*DeviceConfig
 
+// Clone 克隆列表
 func (s DeviceConfigList) Clone() DeviceConfigList {
 	res := make(DeviceConfigList, 0, len(s))
 	for _, v := range s {
@@ -15,40 +16,33 @@ func (s DeviceConfigList) Clone() DeviceConfigList {
 	return res
 }
 
+// Get 从列表中查询目标配置信息（通常用于检测目标配置是否存在）
 func (s DeviceConfigList) Get(val DeviceConfig) (*DeviceConfig, error) {
 	for _, v := range s {
-		if v.Width == val.Width && v.Height == val.Height && v.FPS == val.FPS {
+		if v.Eq(&val) {
 			return v.Clone(), nil
 		}
 	}
 
-	// 默认未查询到分辨率
+	// 默认未查询到
 	return nil, ErrDeviceMediaConfigNotFound
 }
 
 // GetMostSimilar 查找与目标配置信息最相似的配置信息
 func (s DeviceConfigList) GetMostSimilar(val DeviceConfig) (*DeviceConfig, error) {
-	// 从列表中过滤掉自动分辨率
-	vailds := make(DeviceConfigList, 0, len(s))
-	for _, v := range s {
-		if !v.Eq(AutoDeviceConfig.Clone()) {
-			vailds = append(vailds, v)
-		}
-	}
-
 	// 只有一个分辨率时直接返回
-	if len(vailds) == 1 {
-		return vailds[0].Clone(), nil
+	if len(s) == 1 {
+		return s[0].Clone(), nil
 	}
 
 	// 精准查询
-	res, err := vailds.Get(val)
+	res, err := s.Get(val)
 	if err == nil {
 		return res, nil
 	}
 
 	// 拷贝一份用于排序
-	tmpS := vailds.Clone()
+	tmpS := s.Clone()
 	// 大于目标的支持信息
 	var gtList DeviceConfigList
 	// 分辨率一致帧率不一致
@@ -57,10 +51,11 @@ func (s DeviceConfigList) GetMostSimilar(val DeviceConfig) (*DeviceConfig, error
 	var ltList DeviceConfigList
 	// 筛选分辨率
 	for _, v := range tmpS {
-		// 过滤掉默认分辨率
-		if v.Eq(&DefaultDeviceConfig) {
+		// 过滤掉格式不一致的
+		if v.Format != val.Format {
 			continue
 		}
+		// 对分辨率进行比较
 		if v.Width == val.Width && v.Height == val.Height { // 分辨率一致
 			eqList = append(eqList, v)
 		} else if v.Width < val.Width || v.Height < val.Height { // 分辨率小于目标分辨率

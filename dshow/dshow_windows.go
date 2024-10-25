@@ -7,12 +7,10 @@ package dshow
 */
 import "C"
 import (
-	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"image/jpeg"
 	"os"
 	"sort"
 	"sync"
@@ -20,11 +18,6 @@ import (
 	"unsafe"
 
 	"github.com/bearki/go-becam/camera"
-)
-
-const (
-	// MJPEG图像格式（小端序）
-	V4L2_PIX_FMT_MJPEG = (uint32('M') | (uint32('J') << 8) | (uint32('P') << 16) | (uint32('G') << 24))
 )
 
 // 转换状态码
@@ -107,7 +100,11 @@ func New() *Control {
 }
 
 // 尝试获取帧
-func (p *Control) tryGetFrame(parseW, parseH *uint32) ([]byte, error) {
+//
+//	@return 帧数据
+//	@return 帧信息
+//	@return 错误信息
+func (p *Control) tryGetFrame() ([]byte, *camera.DeviceConfig, error) {
 	// 声明响应参数
 	var replyData *C.uint8_t
 	var replySize C.size_t
@@ -119,7 +116,7 @@ func (p *Control) tryGetFrame(parseW, parseH *uint32) ([]byte, error) {
 		if err := convertStatusCode(code); err != nil {
 			if i == 100-1 {
 				fmt.Fprintln(os.Stderr, err.Error())
-				return nil, errors.Join(camera.ErrGetFrameFailed, err)
+				return nil, nil, errors.Join(camera.ErrGetFrameFailed, err)
 			}
 		} else {
 			break
@@ -130,22 +127,8 @@ func (p *Control) tryGetFrame(parseW, parseH *uint32) ([]byte, error) {
 
 	// 拷贝帧
 	data := C.GoBytes(unsafe.Pointer(replyData), C.int(replySize))
-
-	// 是否需要解码图像
-	if parseW != nil && parseH != nil {
-		// 解码图像
-		imgConf, err := jpeg.DecodeConfig(bytes.NewReader(data))
-		if err != nil {
-			// 返回异常
-			return nil, errors.Join(camera.ErrDecodeJpegImageFailed, err)
-		}
-		// 赋值宽高
-		*parseW = uint32(imgConf.Width)
-		*parseH = uint32(imgConf.Height)
-	}
-
 	// 获取帧成功
-	return data, nil
+	return data, p.deviceSupportInfo.Clone(), nil
 }
 
 // --------------------------------------------- 实现Manager接口 --------------------------------------------- //
@@ -207,7 +190,7 @@ func (p *Control) getList() (camera.DeviceList, error) {
 			Name:         name,
 			SymbolicLink: devicePath,
 			LocationInfo: locationInfo,
-			ConfigList:   camera.DeviceConfigList{camera.AutoDeviceConfig.Clone()},
+			ConfigList:   make(camera.DeviceConfigList, 0, int(device.frameInfoListSize)),
 		}
 
 		// 遍历设备支持的视频帧
@@ -215,32 +198,34 @@ func (p *Control) getList() (camera.DeviceList, error) {
 		for j := 0; j < int(device.frameInfoListSize); j++ {
 			// 使用C助手函数获取设备配置信息
 			frameInfo := C.getFrameInfoListItem(device.frameInfoList, C.size_t(j))
-			// 跳过不要的格式和分辨率
-			if uint32(frameInfo.format) != V4L2_PIX_FMT_MJPEG || frameInfo.width < 600 {
-				continue
-			}
 			// 追加配置信息
 			deviceConfigList = append(deviceConfigList, &camera.DeviceConfig{
 				Width:  uint32(frameInfo.width),
 				Height: uint32(frameInfo.height),
 				FPS:    uint32(frameInfo.fps),
+				Format: camera.NewFourccFromNumber(uint32(frameInfo.format)),
 			})
 		}
 
 		// 对支持信息进行排序
 		sort.Slice(deviceConfigList, func(i, j int) bool {
-			// 宽度是否相等
-			if deviceConfigList[i].Width == deviceConfigList[j].Width {
-				// 高度是否相等
-				if deviceConfigList[i].Height == deviceConfigList[j].Height {
-					// 按帧率从大到小排序
-					return deviceConfigList[i].FPS >= deviceConfigList[j].FPS
+			// 格式是否一致
+			if deviceConfigList[i].Format == deviceConfigList[j].Format {
+				// 宽度是否相等
+				if deviceConfigList[i].Width == deviceConfigList[j].Width {
+					// 高度是否相等
+					if deviceConfigList[i].Height == deviceConfigList[j].Height {
+						// 按帧率从大到小排序
+						return deviceConfigList[i].FPS >= deviceConfigList[j].FPS
+					}
+					// 按高度从大到小排序
+					return deviceConfigList[i].Height > deviceConfigList[j].Height
 				}
-				// 按高度从大到小排序
-				return deviceConfigList[i].Height > deviceConfigList[j].Height
+				// 按宽度从大到小排序
+				return deviceConfigList[i].Width > deviceConfigList[j].Width
 			}
-			// 按宽度从大到小排序
-			return deviceConfigList[i].Width > deviceConfigList[j].Width
+			// 按格式随便
+			return deviceConfigList[i].Format > deviceConfigList[j].Format
 		})
 
 		// 追加到相机配置
@@ -307,27 +292,10 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 		return err
 	}
 
-	// 是否需要修改分辨率
-	if info.Width > 0 && info.Height > 0 && info.FPS > 0 {
-		// 筛选分辨率
-		sInfo, err := cameraInfo.ConfigList.Get(info)
-		if err != nil {
-			return err
-		}
-		// 赋值选择的分辨率
-		info.Width = sInfo.Width
-		info.Height = sInfo.Height
-		info.FPS = sInfo.FPS
-	} else if len(cameraInfo.ConfigList) > 0 {
-		// 选中与默认分辨率最相似的分辨率
-		sInfo, err := cameraInfo.ConfigList.GetMostSimilar(camera.DefaultDeviceConfig)
-		if err != nil {
-			return err
-		}
-		// 赋值选择的分辨率
-		info.Width = sInfo.Width
-		info.Height = sInfo.Height
-		info.FPS = sInfo.FPS
+	// 确认输入的配置是否在列表中
+	yesInfo, err := cameraInfo.ConfigList.Get(info)
+	if err != nil {
+		return err
 	}
 
 	// 关闭已打开的相机
@@ -338,10 +306,10 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 	defer C.free(unsafe.Pointer(devicePath))
 	// 转换配置信息
 	var frameInfo C.VideoFrameInfo
-	frameInfo.width = C.uint32_t(info.Width)
-	frameInfo.height = C.uint32_t(info.Height)
-	frameInfo.fps = C.uint32_t(info.FPS)
-	frameInfo.format = C.uint32_t(V4L2_PIX_FMT_MJPEG)
+	frameInfo.width = C.uint32_t(yesInfo.Width)
+	frameInfo.height = C.uint32_t(yesInfo.Height)
+	frameInfo.fps = C.uint32_t(yesInfo.FPS)
+	frameInfo.format = C.uint32_t(yesInfo.Format.Number())
 	// 执行打开
 	code := C.BecamOpenDevice(p.handle, devicePath, &frameInfo)
 	if err := convertStatusCode(code); err != nil {
@@ -351,18 +319,11 @@ func (p *Control) Open(id string, info camera.DeviceConfig) error {
 
 	// 赋值当前使用的相机信息
 	p.deviceInfo = *cameraInfo
+	p.deviceSupportInfo = *yesInfo
 
-	// 尝试获取帧，计算其分辨率
-	_, err = p.tryGetFrame(&p.deviceSupportInfo.Width, &p.deviceSupportInfo.Height)
-	if err != nil {
-		return err
-	}
-
-	// 赋值帧率
-	p.deviceSupportInfo.FPS = info.FPS
-
-	// OK
-	return nil
+	// 尝试获取帧
+	_, _, err = p.tryGetFrame()
+	return err
 }
 
 // GetDeviceConfigInfo 获取当前设备配置信息
@@ -386,22 +347,21 @@ func (p *Control) GetCurrDeviceConfigInfo() (*camera.Device, *camera.DeviceConfi
 
 // GetStream 获取帧
 //
-//	@param	outWidth	需要解析图像宽高时请传入地址，以便于内部赋值
-//	@param	outHeight	需要解析图像宽高时请传入地址，以便于内部赋值
-//	@return	图片流
+//	@return	帧数据
+//	@return	帧信息
 //	@return	异常信息
-func (p *Control) GetFrame(outWidth, outHeight *uint32) ([]byte, error) {
+func (p *Control) GetFrame() ([]byte, *camera.DeviceConfig, error) {
 	// 操作加锁
 	p.rwmutex.Lock()
 	defer p.rwmutex.Unlock()
 
 	// 检查相机是否已打开
 	if p.handle == nil {
-		return nil, camera.ErrDeviceNotOpen
+		return nil, nil, camera.ErrDeviceNotOpen
 	}
 
 	// 尝试获取帧
-	return p.tryGetFrame(outWidth, outHeight)
+	return p.tryGetFrame()
 }
 
 // 关闭已打开的相机（无锁）

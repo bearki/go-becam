@@ -2,8 +2,8 @@ package test
 
 import (
 	"fmt"
-	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,24 +23,20 @@ func TestCamera(t *testing.T) {
 		t.Fatal("未找到相机")
 	}
 
-	var index int = 0
+	var id string = ""
 	var info *camera.DeviceConfig
 	for i, v := range list {
 		fmt.Printf("%d. %s (%s)\n", i+1, v.ID, v.Name)
 		for j, w := range v.ConfigList {
-			fmt.Printf("\t%d. %d*%dp (%d)\n", j+1, w.Width, w.Height, w.FPS)
-			if info == nil && w.Width == 1920 {
-				index = i
-				info = &camera.DeviceConfig{
-					Width:  w.Width,
-					Height: w.Height,
-					FPS:    w.FPS,
-				}
+			fmt.Printf("\t%d. %s %d*%dp (%d)\n", j+1, w.Format, w.Width, w.Height, w.FPS)
+			if info == nil && w.Height == 1080 {
+				id = v.ID
+				info = w
 			}
 		}
 	}
 
-	err = cameraManage.Open(list[index].ID, *info)
+	err = cameraManage.Open(id, *info)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,20 +44,20 @@ func TestCamera(t *testing.T) {
 
 	now := time.Now()
 
-	var w, h uint32
 	var img []byte
-	for i := 0; i < 10000000; i++ {
-		img, err = cameraManage.GetFrame(&w, &h)
+	var imgInfo *camera.DeviceConfig
+	for i := 0; i < 100; i++ {
+		img, imgInfo, err = cameraManage.GetFrame()
 		if err != nil {
 			t.Log(err)
 		} else {
-			t.Logf("Size: %d, PX: %d*%d\n", len(img), w, h)
-			err = os.WriteFile("test.jpg", img, 0644)
+			t.Logf("Size: %d, PX: %d*%d Fotmat: %s\n", len(img), imgInfo.Width, imgInfo.Height, imgInfo.Format)
+			err = os.WriteFile("test."+strings.ToLower(imgInfo.Format.String()), img, 0644)
 			if err != nil {
-				log.Println(err)
+				t.Log(err)
 			}
 		}
 	}
 
-	t.Logf("图像分辨率：%d*%dpx，实际帧率：%d", w, h, time.Since(now).Milliseconds()/1000)
+	t.Logf("图像分辨率：%s %d*%dpx，实际帧率：%d\n", imgInfo.Format, imgInfo.Width, imgInfo.Height, 1000/(time.Since(now).Milliseconds()/100))
 }
