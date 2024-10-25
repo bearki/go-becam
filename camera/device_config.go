@@ -91,7 +91,8 @@ const (
 	FOURCC_YUYV   = Fourcc("YUYV") // 16  YUV 4:2:2
 	FOURCC_YUY2   = Fourcc("YUY2") // 16  YUV 4:2:2
 	FOURCC_YYUV   = Fourcc("YYUV") // 16  YUV 4:2:2
-	FOURCC_YVYU   = Fourcc("YVYU") // 16 YVU 4:2:2
+	FOURCC_YVYU   = Fourcc("YVYU") // 16  YVU 4:2:2
+	FOURCC_YVY2   = Fourcc("YVY2") // 16  YVU 4:2:2
 	FOURCC_UYVY   = Fourcc("UYVY") // 16  YUV 4:2:2
 	FOURCC_VYUY   = Fourcc("VYUY") // 16  YUV 4:2:2
 	FOURCC_Y41P   = Fourcc("Y41P") // 12  YUV 4:1:1
