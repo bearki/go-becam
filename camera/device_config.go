@@ -99,7 +99,7 @@ const (
 	FOURCC_YUV444 = Fourcc("Y444") // 16  xxxxyyyy uuuuvvvv
 	FOURCC_YUV555 = Fourcc("YUVO") // 16  YUV-5-5-5
 	FOURCC_YUV565 = Fourcc("YUVP") // 16  YUV-5-6-5
-	FOURCC_YUV24  = Fourcc("YUV3") // 24  YUV-8-8-8
+	FOURCC_YUV24  = Fourcc("YUV3") // 24  YUV-8-8-8 // 未找到YVU-8-8-8的支持
 	FOURCC_YUV32  = Fourcc("YUV4") // 32  YUV-8-8-8-8
 	FOURCC_AYUV32 = Fourcc("AYUV") // 32  AYUV-8-8-8-8
 	FOURCC_XYUV32 = Fourcc("XYUV") // 32  XYUV-8-8-8-8
@@ -130,7 +130,7 @@ const (
 	FOURCC_YUV411P = Fourcc("411P") // 12  YVU411 planar
 	FOURCC_YUV420  = Fourcc("YU12") // 12  YUV 4:2:0
 	FOURCC_YVU420  = Fourcc("YV12") // 12  YVU 4:2:0
-	FOURCC_YUV422P = Fourcc("422P") // 16  YVU422 planar
+	FOURCC_YUV422P = Fourcc("422P") // 16  YVU422 planar // 未找到YVU422P的支持
 
 	// three non contiguous planes - Y, Cb, Cr
 	FOURCC_YUV420M = Fourcc("YM12") // 12  YUV420 planar
