@@ -225,7 +225,7 @@ func (p *Control) getList() (camera.DeviceList, error) {
 				return deviceConfigList[i].Width > deviceConfigList[j].Width
 			}
 			// 按格式随便
-			return deviceConfigList[i].Format > deviceConfigList[j].Format
+			return deviceConfigList[i].Format < deviceConfigList[j].Format
 		})
 
 		// 追加到相机配置
