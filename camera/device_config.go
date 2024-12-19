@@ -260,6 +260,7 @@ type DeviceConfig struct {
 	Format Fourcc // 相机支持的格式
 }
 
+// NewDeviceConfig 构造配置信息
 func NewDeviceConfig(w, h, fps uint32, format Fourcc) DeviceConfig {
 	return DeviceConfig{
 		Width:  w,
@@ -269,6 +270,7 @@ func NewDeviceConfig(w, h, fps uint32, format Fourcc) DeviceConfig {
 	}
 }
 
+// Clone 克隆一份配置信息
 func (p *DeviceConfig) Clone() *DeviceConfig {
 	if p == nil {
 		return nil
@@ -281,6 +283,7 @@ func (p *DeviceConfig) Clone() *DeviceConfig {
 	}
 }
 
+// Eq 两个配置信息是否一样
 func (p *DeviceConfig) Eq(v *DeviceConfig) bool {
 	if p == nil && v == nil {
 		return true
@@ -292,4 +295,9 @@ func (p *DeviceConfig) Eq(v *DeviceConfig) bool {
 		p.Height == v.Height &&
 		p.FPS == v.FPS &&
 		p.Format == v.Format
+}
+
+// IsZero 检查配置信息是否为0值（不关心Format）
+func (p *DeviceConfig) IsZero() bool {
+	return p.Width == 0 && p.Height == 0 && p.FPS == 0
 }

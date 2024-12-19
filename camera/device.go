@@ -9,6 +9,7 @@ type Device struct {
 	ConfigList   DeviceConfigList // 相机支持分辨率列表
 }
 
+// Clone 克隆相机设备信息
 func (p *Device) Clone() *Device {
 	if p == nil {
 		return nil
