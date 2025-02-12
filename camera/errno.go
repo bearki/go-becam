@@ -7,6 +7,7 @@ import (
 const (
 	_ errno = iota // 占位
 
+	ErrEnumDeviceFailed           // 枚举设备失败
 	ErrDeviceNotFound             // 设备未找到
 	ErrDeviceMediaConfigNotFound  // 设备媒体配置未找到
 	ErrGetDeviceMediaConfigFailed // 获取设备媒体配置失败
@@ -19,6 +20,7 @@ const (
 
 // 错误码变量名映射
 var errVarName = map[errno]string{
+	ErrEnumDeviceFailed:           "ErrEnumDeviceFailed",
 	ErrDeviceNotFound:             "ErrDeviceNotFound",
 	ErrDeviceMediaConfigNotFound:  "ErrDeviceMediaConfigNotFound",
 	ErrGetDeviceMediaConfigFailed: "ErrGetDeviceMediaConfigFailed",

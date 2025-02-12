@@ -1,0 +1,129 @@
+STATUS_CODE_ERR_HANDLE_EMPTY:
+  zh-cn: "Becam接口句柄未初始化"
+  en-us: "The Becam interface handle is not initialized"
+STATUS_CODE_ERR_INPUT_PARAM:
+  zh-cn: "传入参数错误"
+  en-us: "Incoming parameter error"
+STATUS_CODE_ERR_DEVICE_ENUM_FAILED:
+  zh-cn: "设备枚举失败"
+  en-us: "Device enumeration failure"
+STATUS_CODE_ERR_DEVICE_NOT_FOUND:
+  zh-cn: "设备未找到"
+  en-us: "Device not found"
+STATUS_CODE_ERR_DEVICE_OPEN_FAILED:
+  zh-cn: "设备打开失败"
+  en-us: "Device failed to open"
+STATUS_CODE_ERR_DEVICE_NOT_OPEN:
+  zh-cn: "设备未打开"
+  en-us: "Device not turned on"
+STATUS_CODE_ERR_DEVICE_FRAME_FMT_NOT_FOUND:
+  zh-cn: "设备视频帧格式未找到"
+  en-us: "Device video frame format not found"
+STATUS_CODE_ERR_DEVICE_FRAME_FMT_SET_FAILED:
+  zh-cn: "设备视频帧格式配置失败"
+  en-us: "Description Failed to configure the video frame format of the device"
+STATUS_CODE_ERR_DEVICE_RUN_FAILED:
+  zh-cn: "设备运行失败"
+  en-us: "Equipment operation failure"
+STATUS_CODE_ERR_DEVICE_NOT_RUN:
+  zh-cn: "设备未运行"
+  en-us: "Equipment not operating"
+STATUS_CODE_ERR_GET_FRAME_FAILED:
+  zh-cn: "获取视频帧失败"
+  en-us: "Description Failed to obtain the video frame"
+STATUS_CODE_ERR_GET_FRAME_EMPTY:
+  zh-cn: "获取视频帧为空"
+  en-us: "Gets a blank video frame"
+
+STATUS_CODE_DSHOW_ERR_INTERNAL_PARAM:
+  zh-cn: "DirectShow异常：内部参数错误"
+  en-us: "DirectShow exception: Internal parameters are incorrect"
+STATUS_CODE_DSHOW_ERR_INIT_COM:
+  zh-cn: "DirectShow异常：初始化COM库失败"
+  en-us: "DirectShow exception: Failed to initialize the COM library"
+STATUS_CODE_DSHOW_ERR_CREATE_ENUMERATOR:
+  zh-cn: "DirectShow异常：创建设备枚举器失败"
+  en-us: "DirectShow exception: Failed to create the device enumerator"
+STATUS_CODE_DSHOW_ERR_GET_DEVICE_PROP:
+  zh-cn: "DirectShow异常：获取设备属性失败"
+  en-us: "DirectShow exception: Failed to obtain device attributes"
+STATUS_CODE_DSHOW_ERR_GET_STREAM_CAPS:
+  zh-cn: "DirectShow异常：获取设备流能力失败"
+  en-us: "DirectShow exception: Failed to obtain the device stream capability"
+STATUS_CODE_DSHOW_ERR_CREATE_GRAPH_BUILDER:
+  zh-cn: "DirectShow异常：创建图像构建器失败"
+  en-us: "DirectShow exception: Failed to create the image builder"
+STATUS_CODE_DSHOW_ERR_ADD_CAPTURE_FILTER:
+  zh-cn: "DirectShow异常：添加捕获过滤器到图像构建器失败"
+  en-us: "DirectShow exception: Failed to add capture filter to image builder"
+STATUS_CODE_DSHOW_ERR_CREATE_SAMPLE_GRABBER:
+  zh-cn: "DirectShow异常：创建样品采集器失败"
+  en-us: "DirectShow exception: Failed to create the sample collector"
+STATUS_CODE_DSHOW_ERR_GET_SAMPLE_GRABBER_INFC:
+  zh-cn: "DirectShow异常：获取样品采集器接口失败"
+  en-us: "DirectShow exception: Failed to obtain the sample collector port"
+STATUS_CODE_DSHOW_ERR_ADD_SAMPLE_GRABBER:
+  zh-cn: "DirectShow异常：添加样品采集器到图像构建器失败"
+  en-us: "DirectShow exception: Failed to add the sample collector to the image builder"
+STATUS_CODE_DSHOW_ERR_CREATE_MEDIA_CONTROL:
+  zh-cn: "DirectShow异常：创建媒体控制器失败"
+  en-us: "DirectShow exception: Failed to create a media controller"
+STATUS_CODE_DSHOW_ERR_CREATE_NULL_RENDER:
+  zh-cn: "DirectShow异常：创建空渲染器失败"
+  en-us: "DirectShow exception: Failed to create an empty renderer"
+STATUS_CODE_DSHOW_ERR_ADD_NULL_RENDER:
+  zh-cn: "DirectShow异常：添加空渲染器到图像构建器失败"
+  en-us: "DirectShow exception: Failed to add an empty renderer to the image builder"
+STATUS_CODE_DSHOW_ERR_CAPTURE_GRABBER:
+  zh-cn: "DirectShow异常：连接捕获器和采集器失败"
+  en-us: "DirectShow exception: Failed to connect the collector to the collector"
+STATUS_CODE_DSHOW_ERR_GRABBER_RENDER:
+  zh-cn: "DirectShow异常：连接采集器和渲染器失败"
+  en-us: "DirectShow exception: Failed to connect the collector to the renderer"
+STATUS_CODE_DSHOW_ERR_FRAME_NOT_UPDATE:
+  zh-cn: "DirectShow异常：视频帧未更新"
+  en-us: "DirectShow exception: The video frame is not updated"
+
+STATUS_CODE_MF_ERR_CREATE_ATTR_STORE:
+  zh-cn: "MediaFoundation异常：创建属性存储器失败"
+  en-us: "MediaFoundation Exception: Failed to create property storage"
+STATUS_CODE_MF_ERR_SET_ATTR_STORE:
+  zh-cn: "MediaFoundation异常：赋值属性存储器失败"
+  en-us: "MediaFoundation Exception: Failed to assign property memory"
+STATUS_CODE_MF_ERR_CREATE_PRESENT_DESC:
+  zh-cn: "MediaFoundation异常：获取设备获取演示文稿描述符失败"
+  en-us: "MediaFoundation exception: The getting device failed to get the presentation descriptor"
+STATUS_CODE_MF_ERR_GET_STREAM_DESC:
+  zh-cn: "MediaFoundation异常：获取设备视频流的流描述符失败"
+  en-us: "MediaFoundation Exception: Failed to get the stream descriptor for the device video stream"
+STATUS_CODE_MF_ERR_GET_MEDIA_TYPE_HANDLER:
+  zh-cn: "MediaFoundation异常：获取媒体类型处理器失败"
+  en-us: "MediaFoundation Exception: Failed to obtain the media type processor"
+STATUS_CODE_MF_ERR_GET_MEDIA_TYPE_COUNT:
+  zh-cn: "MediaFoundation异常：获取媒体类型总数量失败"
+  en-us: "MediaFoundation Exception: Failed to obtain the total number of media types"
+STATUS_CODE_MF_ERR_GET_MEDIA_TYPE:
+  zh-cn: "MediaFoundation异常：获取媒体资源类型失败"
+  en-us: "MediaFoundation Exception: Failed to obtain the media resource type"
+STATUS_CODE_MF_ERR_CONVERT_FRAME_BUFFER:
+  zh-cn: "MediaFoundation异常：转换视频帧缓冲区失败"
+  en-us: "MediaFoundation Exception: Failed to convert the video frame buffer"
+STATUS_CODE_MF_ERR_LOCK_FRAME_BUFFER:
+  zh-cn: "MediaFoundation异常：锁定视频帧缓冲区失败"
+  en-us: "MediaFoundation Exception: Failed to lock the video frame buffer"
+
+STATUS_CODE_V4L2_ERR_REQUEST_BUF:
+  zh-cn: "V4L2异常：申请内核缓冲区失败"
+  en-us: "V4L2 exception: Failed to apply for kernel buffer"
+STATUS_CODE_V4L2_ERR_QUERY_BUF:
+  zh-cn: "V4L2异常：查询内核缓冲区失败"
+  en-us: "V4L2 exception: Failed to query the kernel buffer"
+STATUS_CODE_V4L2_ERR_MMAP_BUF:
+  zh-cn: "V4L2异常：映射内核缓冲区失败"
+  en-us: "V4L2 exception: Mapping kernel buffers failed"
+STATUS_CODE_V4L2_ERR_LOCK_BUF:
+  zh-cn: "V4L2异常：缓冲区加锁失败"
+  en-us: "V4L2 exception: Buffer locking failed"
+STATUS_CODE_V4L2_ERR_UNLOCK_BUF:
+  zh-cn: "V4L2异常：缓冲区解锁失败"
+  en-us: "V4L2 exception: Unlocking the buffer failed"

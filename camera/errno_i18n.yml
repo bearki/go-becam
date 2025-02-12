@@ -1,3 +1,7 @@
+ErrEnumDeviceFailed:
+  zh-cn: "枚举设备失败"
+  en-us: "Enumeration device failure"
+  
 ErrDeviceNotFound:
   zh-cn: "设备未找到"
   en-us: "Device not found"
