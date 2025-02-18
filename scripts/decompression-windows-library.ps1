@@ -20,11 +20,11 @@ foreach ($item in $libList) {
     # 解压
     Expand-Archive -Path $srcPath -DestinationPath $dstPath -Force
     # 处理pkg-config文件
-    $libPc = (Get-Content -Path "${dstPath}\becam.pc") -creplace "ENV_LIBRARY_PATH", "${dstPath}"
+    $libPcContent = (Get-Content -Path "${dstPath}\becam.pc") -creplace "ENV_LIBRARY_PATH", "${dstPath}"
     # 确保目标目录存在
     $libPcShortPath = $item -replace '^libbecam_', ""
-    $libPcDstDir = Join-Path -Path $projectDir -ChildPath "lib\pkgconfig\$libPcShortPath"
-    New-Item -Path $targetDir -ItemType Directory -foreach
+    $libPcDir = Join-Path -Path $projectDir -ChildPath "lib\pkgconfig\$libPcShortPath"
+    New-Item -Path $libPcDir -ItemType Directory -Force
     # 写入
-    $libPc | Set-Content -Path "${libPcDstDir}\becam.pc" -Encoding UTF8
+    $libPcContent | Set-Content -Path "${libPcDir}\becam.pc" -Encoding UTF8
 }
