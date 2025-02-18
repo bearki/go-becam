@@ -10,6 +10,9 @@
 *.jpg
 *.jpeg
 *.png
+*.MJPG
+main
+
 
 # not ignore files
 !/test/*.go
