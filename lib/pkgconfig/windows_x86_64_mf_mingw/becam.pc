@@ -1,4 +1,4 @@
-# Package Information for pkg-config
+﻿# Package Information for pkg-config
 prefix=D:\Project\go-becam\lib\libbecam\libbecam_windows_x86_64_mf_mingw
 libdir=${prefix}/lib
 includedir=${prefix}/include

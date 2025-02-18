@@ -21,5 +21,6 @@ foreach ($item in $libList) {
     Expand-Archive -Path $srcPath -DestinationPath $dstPath -Force
     # 处理pkg-config文件
     $libPc = (Get-Content -Path "${dstPath}\becam.pc") -creplace "ENV_LIBRARY_PATH", "${dstPath}"
-    $libPc | Set-Content -Path "${dstPath}\becam.pc" -Encoding UTF8
+    $libPcPath = $item.Replace("libbecam_", "")
+    $libPc | Set-Content -Path "${projectDir}\lib\pkgconfig\${libPcPath}\becam.pc" -Encoding UTF8
 }
