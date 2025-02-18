@@ -1,6 +1,7 @@
 # ignore directorys
 /**/bin/
 /lib/lib*/
+/download/
 
 # not ignore directorys
 
