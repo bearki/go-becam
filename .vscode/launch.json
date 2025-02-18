@@ -12,7 +12,7 @@
             "program": "${workspaceFolder}/cmd",
             "env": {
                 "GO_I18N_CODE": "zh-cn",
-                "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/windows_x86_64"
+                "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/windows_x86_64_dshow_mingw"
             },
         },
         {
@@ -23,7 +23,7 @@
             "program": "${workspaceFolder}/cmd",
             "env": {
                 "GO_I18N_CODE": "zh-cn",
-                "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/linux_x86_64"
+                "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/linux_x86_64_v4l2_gnu"
             },
         }
     ]

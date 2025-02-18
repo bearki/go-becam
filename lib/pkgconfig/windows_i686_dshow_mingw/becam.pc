@@ -1,0 +1,10 @@
+# Package Information for pkg-config
+prefix=D:\Project\go-becam\lib\libbecamdshow\libbecamdshow_windows_i686
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: BecamDshow
+Description: Becam Direct Show Library
+Version: 2.0.0.0
+Libs: -L${libdir} -Wl,-Bstatic -lbecamdshow -lstdc++ -Wl,-Bdynamic -lstrmiids -lole32 -loleaut32
+Cflags: -I${includedir}

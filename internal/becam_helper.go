@@ -1,8 +1,7 @@
 package internal
 
 /*
-#cgo linux pkg-config: becamv4l2
-#cgo windows pkg-config: becamdshow
+#cgo pkg-config: becam
 #include <stdlib.h>
 #include "becam_helper.h"
 */
