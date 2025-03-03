@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/bearki/go-becam"
@@ -54,19 +53,20 @@ func main() {
 			var img []byte
 			var imgInfo *camera.DeviceConfig
 			for i := 0; i < 100; i++ {
+				tmp := time.Now()
 				img, imgInfo, err = cameraManage.GetFrame()
 				if err != nil {
 					log.Println(err)
 				} else {
-					log.Printf("Size: %d, PX: %d*%d Fotmat: %s\n", len(img), imgInfo.Width, imgInfo.Height, imgInfo.Format)
-					err = os.WriteFile("test."+imgInfo.Format.String(), img, 0644)
-					if err != nil {
-						log.Println(err)
-					}
+					log.Printf("Size: %d, PX: %d*%d Fotmat: %s, FPS: %d\n", len(img), imgInfo.Width, imgInfo.Height, imgInfo.Format, 1000/time.Since(tmp).Milliseconds())
+					// err = os.WriteFile("test."+imgInfo.Format.String(), img, 0644)
+					// if err != nil {
+					// 	log.Println(err)
+					// }
 				}
 			}
 
-			log.Printf("图像分辨率：%s %d*%dpx，实际帧率：%d\n", imgInfo.Format, imgInfo.Width, imgInfo.Height, 1000/time.Since(now).Milliseconds()/100)
+			log.Printf("图像分辨率：%s %d*%dpx，平均帧率：%d\n", imgInfo.Format, imgInfo.Width, imgInfo.Height, 1000/(time.Since(now).Milliseconds()/100))
 		}()
 	}
 
