@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "libbecam",
+    "Repository": "http://gitea.local.sixelp.com/common/becam-action",
+    "Version": "v2.0.1.1",
+    "Targets": {
+      "Windows": {
+        "Archs": ["i686_dshow_mingw", "x86_64_dshow_mingw"],
+        "CompressType": "zip"
+      },
+      "Linux": {
+        "Archs": ["i686_v4l2_gnu", "x86_64_v4l2_gnu", "arm_v4l2_gnu", "aarch64_v4l2_gnu"],
+        "CompressType": "tar.gz"
+      }
+    }
+  }
+]

@@ -3,8 +3,8 @@
     "GO_I18N_CODE": "zh-cn",
     "CGO_ENABLED": "1",
     // "GOARCH": "arm",
-    "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/linux_x86_64_v4l2_gnu",
-    // "PKG_CONFIG_PATH": "${workspaceFolder}/lib/pkgconfig/windows_x86_64_dshow_mingw",
+    // "PKG_CONFIG_PATH": "${workspaceFolder}/libs/pkgconfig/linux_x86_64",
+    "PKG_CONFIG_PATH": "${workspaceFolder}/libs/pkgconfig/windows_x86_64",
     // "CC": "$HOME/build-tools/RV1126_RV1109_LINUX_SDK_V2.2.4/prebuilts/gcc/linux-x86/arm/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf/bin/arm-linux-gnueabihf-gcc",
     // "CXX": "$HOME/build-tools/RV1126_RV1109_LINUX_SDK_V2.2.4/prebuilts/gcc/linux-x86/arm/gcc-arm-8.3-2019.03-x86_64-arm-linux-gnueabihf/bin/arm-linux-gnueabihf-g++"
   }
